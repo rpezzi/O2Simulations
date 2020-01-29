@@ -1,0 +1,54 @@
+
+* Babel test
+
+#+begin_src bash :results output 
+pwd
+date
+#+end_src
+
+
+* O2 Test 
+:PROPERTIES:
+:SIM_ID: 0000test
+:O2CMD: "alienv setenv O2/latest-dev-o2 -c "  
+:END:
+#+begin_src bash :var SIM_ID=(org-entry-get nil "SIM_ID" t) :var O2CMD=(org-entry-get nil "O2CMD" t) :results output 
+source ~/.bashrc
+SIMBASEDIR=$HOME/alice/simruns/$SIM_ID
+mkdir -p $SIMBASEDIR
+cd $SIMBASEDIR
+$O2CMD root.exe -q 
+#+end_src
+
+
+* 0000 - Description
+:PROPERTIES:
+:SIM_ID: 0000
+:END:
+
+#+begin_src bash :var SIM_ID=(org-entry-get nil "SIM_ID" t) :results output 
+source ~/.bashrc
+O2CMD="alienv setenv O2/latest-dev-o2 -c "
+RUNSCRIPT=run.sh
+SIMBASEDIR=$HOME/alidock/simruns/$SIM_ID
+mkdir -p $SIMBASEDIR
+cd $SIMBASEDIR
+cat <<-RUN > $RUNSCRIPT
+# -------------> Script code bellow this line <----------------
+echo ""
+cd ~/simruns/$SIM_ID
+$O2CMD o2-sim -m PIPE ITS MFT -e TGeant3 -g boxgen -n 10 --configKeyValues 'BoxGun.pdg=13 ; BoxGun.eta[0]=-3.6 ; BoxGun.eta[1]=-2.45; BoxGun.number=300'
+ln -s ~/simruns/complete_dictionary.bin
+$O2CMD  o2-sim-digitizer-workflow -b
+$O2CMD o2-mft-reco-workflow -b
+#$O2CMD root.exe -q -b $MYMACROS/MultiplicityEstimatorFromClusters.C
+RUN
+
+# Run script
+chmod +x $RUNSCRIPT
+#alidock exec ./simruns/$SIM_ID/$RUNSCRIPT
+
+#+end_src
+
+
+
