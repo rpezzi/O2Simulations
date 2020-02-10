@@ -6,7 +6,8 @@
 TFile* eventFile = nullptr; //! the file containing the persistent events
 int eventsAvailable = 0;
 
-void KinematicsGraphs(const Char_t *kinFile = "Kinematics.root",
+void KinematicsGraphs(bool filterSecondaries = kFALSE,
+                      const Char_t *kinFile = "Kinematics.root",
                       const Double_t pMin = 0,
                       const Double_t pMax = 20,
                       const Double_t etaMin = -10.0,
@@ -75,34 +76,28 @@ for (auto eventCounter = 0; eventCounter < eventsAvailable; eventCounter++) {
     std::vector<TParticle> particles;
     for (int i = 0; i < branch->GetEntries(); ++i) {
       branch->GetEntry(i);
+      if( filterSecondaries && particle->GetStatusCode() < 1 ) continue;
       particles.push_back(*particle);
     }
 
-
-    for (int i = 0; i < branch->GetEntries(); ++i) {
-      auto& particle = particles[i];
-      auto pdgid = particle.GetPdgCode();
-      auto p = particle.P();
-      auto pt = particle.Pt();
-      auto eta = particle.Eta();
-      auto vx = particle.Vx();
-      auto vy = particle.Vy();
-      auto vz = particle.Vz();
+    for(std::vector<TParticle>::iterator particle = particles.begin(); particle != particles.end(); ++particle) {
+      auto pdgid = particle->GetPdgCode();
+      auto p = particle->P();
+      auto pt = particle->Pt();
+      auto eta = particle->Eta();
+      auto vx = particle->Vx();
+      auto vy = particle->Vy();
+      auto vz = particle->Vz();
       auto parent = -1;
-      auto e = particle.Energy();
-      auto tof = particle.T();
-      auto weight = particle.GetWeight();
+      auto e = particle->Energy();
+      auto tof = particle->T();
+      auto weight = particle->GetWeight();
       MCTrackspT->Fill(pt);
       MCTracksp->Fill(p);
       MCTrackEta->Fill(eta);
       VertexXZ->Fill(vz,vx);
       VertexYZ->Fill(vz,vy);
       VertexXY->Fill(vx,vy);
-
-
-
-
-
       //std::cout  << "Putting primary " << pdgid << " " << particle.GetStatusCode() << " " << particle.GetUniqueID() << std::endl;
     }
     std::cout << "Finished event " << eventCounter << std::endl;
