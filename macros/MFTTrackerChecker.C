@@ -18,7 +18,8 @@ void MFTTrackerChecker( Double_t pMax = 4.0,
                         Double_t pMin = 0.0,
                         Double_t etaMin = -4.0,
                         Double_t etaMax = +4.0,
-                        const Char_t *SimFile = "o2sim.root",
+                        const Char_t *o2sim_KineFile = "o2sim_Kine.root",
+                        const Char_t *HitsMFTFile = "o2sim_HitsMFT.root",
                         const Char_t *trkFile = "mfttracks.root") {
 
   std::unique_ptr<TH1F> MCTrackspT = std::make_unique<TH1F> ("MC Tracks pT", "MC Tracks pT", 100, pMin, pMax);
@@ -103,18 +104,29 @@ void MFTTrackerChecker( Double_t pMax = 4.0,
   MCTracksEtaZ->GetXaxis()->SetTitle("Vertex PosZ [cm]");
 
 
-  // Hits and MC
-  TFile *simFileIn = new TFile(SimFile);
-  TTree *o2SimTree = (TTree*) simFileIn -> Get("o2sim");
-  vector<Hit>* mfthit = nullptr;
-  o2SimTree -> SetBranchAddress("MFTHit",&mfthit);
-  vector<MCTrackT<float>>* mcTr = nullptr;
-  o2SimTree -> SetBranchAddress("MCTrack",&mcTr);
-  o2::dataformats::MCEventHeader* eventHeader = nullptr;
-  o2SimTree -> SetBranchAddress("MCEventHeader.",&eventHeader);
+  // MC
+  TFile *o2sim_KineFileIn = new TFile(o2sim_KineFile);
+  TTree *o2SimKineTree = (TTree*) o2sim_KineFileIn -> Get("o2sim");
 
-  Int_t numberOfEvents = o2SimTree -> GetEntries();
-  std::cout << "numberOfEvents = " << numberOfEvents << std::endl;
+  vector<MCTrackT<float>>* mcTr = nullptr;
+  o2SimKineTree -> SetBranchAddress("MCTrack",&mcTr);
+  o2::dataformats::MCEventHeader* eventHeader = nullptr;
+  o2SimKineTree -> SetBranchAddress("MCEventHeader.",&eventHeader);
+
+  // MFT Hits
+  TFile *HitsMFTFileIn = new TFile(HitsMFTFile);
+  TTree *o2MFTHitsTree = (TTree*) HitsMFTFileIn -> Get("o2sim");
+  vector<Hit>* mfthit = nullptr;
+  o2MFTHitsTree -> SetBranchAddress("MFTHit",&mfthit);
+
+  Int_t numberOfEvents = o2SimKineTree -> GetEntries();
+  Int_t numberOfMFTEvents = o2MFTHitsTree -> GetEntries();
+  if (numberOfEvents == numberOfMFTEvents )
+   std::cout << "numberOfEvents = " << numberOfEvents << std::endl;
+  else {
+    std::cout << "ERROR: Inconsistent number of entries on " << o2sim_KineFile << " and " << HitsMFTFile << std::endl;
+    return -1;
+  }
 
   // MFT Tracks
   TFile *trkFileIn = new TFile(trkFile);
@@ -127,18 +139,15 @@ void MFTTrackerChecker( Double_t pMax = 4.0,
 
   Int_t nCleanTracksLTF = 0, nCleanTracksCA = 0, nInvalidTracksLTF = 0, nInvalidTracksCA = 0, nMFTTrackable = 0;
 
+  mftTrackTree -> GetEntry(0);
+  o2SimKineTree -> GetEntry(0);
+  o2MFTHitsTree -> GetEntry(0);
 
-
-
-
-
-  mftTrackTree->GetEntry(0);
-  o2SimTree -> GetEntry(0);
 //  vector<eventFoundTracks> allFoundTracksLTF(numberOfEvents+10), allFoundTracksCA(numberOfEvents+10); // True for reconstructed tracks - one vector of bool per event
 
 
   for (auto event = 0 ; event < numberOfEvents ; event++) { // Resize vector to accomodate found status of all tracks in all events
-    o2SimTree -> GetEntry(event);
+    o2SimKineTree -> GetEntry(event);
     auto numberOfTracksThisEvent = eventHeader->getMCEventStats().getNKeptTracks();
     std::cout << "Resizing allFoundTracks for event " << event <<  " with ntracks = " << numberOfTracksThisEvent << std::endl;
     eventFoundTracks tempFoundTracks(numberOfTracksThisEvent,false);
@@ -235,7 +244,7 @@ void MFTTrackerChecker( Double_t pMax = 4.0,
   std::cout << "Starting Part 2: MC hits and tracks!" << std::endl;
   for (Int_t event=0; event<numberOfEvents ; event++) { // Loop over events in o2sim
     //std::cout << "Loop over events in o2sim. Event = " << event << std::endl;
-    o2SimTree -> GetEntry(event);
+    o2MFTHitsTree -> GetEntry(event);
     Int_t nMFTHits = mfthit->size(); // Number of mft hits in this event
     //std::cout << "Event " << event << " has " << eventHeader->getMCEventStats().getNKeptTracks() << " tracks and " << nMFTHits << " hits\n";
 
@@ -500,5 +509,4 @@ std::cout << "nCleanTracksCA = " << nCleanTracksCA << std::endl;
 std::cout << "nInvalidTracksLTF = " << nInvalidTracksLTF  << " (" << 100.f*nInvalidTracksLTF/(nCleanTracksLTF+nInvalidTracksLTF) << " %)" << std::endl;
 std::cout << "nInvalidTracksCA = " << nInvalidTracksCA << " (" << 100.f*nInvalidTracksCA/(nCleanTracksCA+nInvalidTracksCA) << " %)" << std::endl;
 std::cout << "---------------------------------------------------" << std::endl;
-
 }
