@@ -1,6 +1,6 @@
 # O2Simulations
 
-Scripts and macros for MFT Simulations
+Scripts and macros for MFT Simulations.
 
 # Getting started with O2 Simulations
 
@@ -9,8 +9,6 @@ Scripts and macros for MFT Simulations
 1.  [Setup tools](#orgf5c8ee3)
 2.  [Relevant skills](#org0544175)
 3.  [References](#org54c5d9c)
-4.  [Proposed activities (Chalenges)](#orgc25d1eb)
-
 
 <a id="orgf5c8ee3"></a>
 
@@ -48,20 +46,4 @@ Scripts and macros for MFT Simulations
 -   O2 Project DOxigen documentation: <https://aliceo2group.github.io/AliceO2/index.html>
 -   ROOT Reference Documentation: <https://root.cern.ch/doc/master/>
 -   C++ reference: <https://en.cppreference.com/w/>
--   ALICE Talk (O2 Discussion Forum)
-
-<https://alice-talk.web.cern.ch/>
-
-
-<a id="orgc25d1eb"></a>
-
-# Proposed activities (Chalenges)
-
--   Find optimal QED Background Ymin for MFT simulations
--   Fix MFTMultiplicityEstimatorFromClusters.C
-    -   <https://github.com/AliceO2Group/AliceO2/commit/43d3cb9d33f21f3c50aad9c57934aeb81ad7558d>
-    -   <https://github.com/AliceO2Group/AliceO2/commit/f2713edc020f1ca1a43ee4fd410a049d22e04388#diff-9db8edc429ee4bbbc1f7869f3431d246>
-    -   <https://github.com/AliceO2Group/AliceO2/commit/cfa31c0bb470798269947b8b6ff5a956e122226e>
--   Macro to estimate tracking efficiency as a function of damaged MFT Chips or MFT ladders
-
-
+-   ALICE Talk (O2 Discussion Forum): <https://alice-talk.web.cern.ch/>
