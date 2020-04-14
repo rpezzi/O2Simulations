@@ -2,7 +2,7 @@
 #include "TFile.h"
 #include "TTree.h"
 #include <TMath.h>
-
+#include "CommonConstants/MathConstants.h"
 
 //constexpr Double_t MFTLayerZ[] = {-45.3, -46.7, -48.6, -50.0, -52.4, -53.8, -67.7, -69.1, -76.1, -77.5};
 using o2::itsmft::Hit;
@@ -16,8 +16,22 @@ using trackHasHitsinMFTDisks = std::array<bool,5>; // Disks with hits from a MFT
 
 bool DEBUG_VERBOSE = false;
 
-bool DISABLE_PART2 = true;
 
+//_________________________________________________________________________________________________
+double getZField(double x, double y, double z) {
+const auto grp = o2::parameters::GRPObject::loadFrom("o2sim_grp.root");
+if (grp) {
+  o2::base::Propagator::initFieldFromGRP(grp);
+  auto field = static_cast<o2::field::MagneticField*>(TGeoGlobalMagField::Instance()->GetField());
+
+  double position[3] = {x,y,z}; // Field at center of MFT
+  return field->getBz(position);
+
+} else {
+  LOG(ERROR) << "Cannot retrieve GRP from file !";
+  return 0;
+}
+}
 
 //_________________________________________________________________________________________________
 void extrapMFTTrackHelixToZ(o2::mft::TrackMFT& track, double zEnd, double Field)
@@ -25,7 +39,6 @@ void extrapMFTTrackHelixToZ(o2::mft::TrackMFT& track, double zEnd, double Field)
    using TrackMFT = o2::mft::TrackMFT;
 
   /// Track extrapolated to the plane at "zEnd" considering a helix
-  /// On return, results from the extrapolation are returned as a new TrackMFT.
 
   if (track.getZ() == zEnd) {
     return; // nothing to be done if same z
@@ -41,7 +54,7 @@ void extrapMFTTrackHelixToZ(o2::mft::TrackMFT& track, double zEnd, double Field)
   double tanl0 = track.getTanl();
   double invqpt0 = track.getInvQPt();
 
-  double k = - Field * 0.299792458e-3;
+  double k = Field * o2::constants::math::B2C;
   double deltax = (dZ * cosphi0 / tanl0 - dZ * dZ * k * invqpt0 * sinphi0 / (2. * tanl0 * tanl0));
   double deltay = (dZ * sinphi0 / tanl0 + dZ * dZ * k * invqpt0 * cosphi0 / (2. * tanl0 * tanl0));
 
@@ -61,113 +74,190 @@ void extrapMFTTrackHelixToZ(o2::mft::TrackMFT& track, double zEnd, double Field)
 }
 
 //_________________________________________________________________________________________________
-void MFTFitterTrackerChecker( Double_t pMax = 40.0,
-                              Double_t pMaxFit = 1000.0,
-                              Double_t pMin = 0.0,
-                              Double_t etaMin = -.2,//-4.0,
-                              Double_t etaMax = +.2,// +4.0,
-                              Double_t phiMin = -.2, //-3.15,
-                              Double_t phiMax = .2, //+3.15,
-                              const Char_t *o2sim_KineFile = "o2sim_Kine.root",
+template <typename H>
+void exportHisto(const H& histo)
+{
+   //gStyle->SetImageScaling(3.);
+   TCanvas *c = new TCanvas;
+   c->SetBatch();
+   std::string imgpath{"images/"};
+   gSystem->MakeDirectory(imgpath.c_str());
+   H *h = new H(histo);
+   h->Draw();
+   gSystem->ProcessEvents();
+   for (std::string type: {".pdf", ".png"}) c->Print((imgpath+std::string(h->GetName()) + type).c_str());
+}
+
+//_________________________________________________________________________________________________
+void MFTFitterTrackerChecker( const Char_t *o2sim_KineFile = "o2sim_Kine.root",
                               const Char_t *HitsMFTFile = "o2sim_HitsMFT.root",
-                              const Char_t *trkFile = "mfttracks.root") {
-
-  std::unique_ptr<TH1F> MCTrackspT = std::make_unique<TH1F> ("MC Tracks pT", "MC Tracks pT", 100, pMin, pMax);
-  MCTrackspT->GetXaxis()->SetTitle("Transverse p");
-  std::unique_ptr<TH1F> MCTracksp = std::make_unique<TH1F> ("MC Tracks p", "MC Tracks p", 100, pMin, pMax);
-  MCTracksp->GetXaxis()->SetTitle("Total p");
-  std::unique_ptr<TH1F> MCTrackEta = std::make_unique<TH1F> ("MC Tracks eta", "MC Tracks Pseudorapidity", 100, etaMin, etaMax);
-  MCTrackEta->GetXaxis()->SetTitle("\\eta ");
-
-  std::unique_ptr<TH1F> MFTTracksMCpT = std::make_unique<TH1F> ("MFT Tracks MC pT", "MFT Tracks MC pT", 100, pMin, pMax);
-  MFTTracksMCpT->GetXaxis()->SetTitle("Transverse p");
-  std::unique_ptr<TH1F> MFTTracksMCp = std::make_unique<TH1F> ("MFT Tracks MC p", "MFT Tracks MC p", 100, pMin, pMax);
-  MFTTracksMCp->GetXaxis()->SetTitle("Total p");
-  std::unique_ptr<TH1F> MFTTrackMCEta = std::make_unique<TH1F> ("MFT Tracks MC eta", "MFT Tracks MC Pseudorapidity", 100, etaMin, etaMax);
-  MFTTrackMCEta->GetXaxis()->SetTitle("\\eta ");
-
-
-  std::unique_ptr<TH1F> MCTracksEta5 = std::make_unique<TH1F> ("MC Tracks 5 MC eta", "-5 cm < zVertex < 5 cm", 100, etaMin, etaMax);
-  MCTracksEta5->GetXaxis()->SetTitle("\\eta ");
-  std::unique_ptr<TH1F> MCTracksEta5_10pos = std::make_unique<TH1F> ("MC Tracks -5 -10 MC eta", "-10 cm < zVertex < -5 cm", 100, etaMin, etaMax);
-  MCTracksEta5_10pos->GetXaxis()->SetTitle("\\eta ");
-  std::unique_ptr<TH1F> MCTracksEta5_10neg = std::make_unique<TH1F> ("MC Tracks 5 10 MC eta", "5 cm < zVertex < 10 cm", 100, etaMin, etaMax);
-  MCTracksEta5_10neg->GetXaxis()->SetTitle("\\eta ");
-
-  std::unique_ptr<TH1F> MFTTracksEta5 = std::make_unique<TH1F> ("MFT Tracks 5 MC MC eta", "-5 cm < zVertex < 5 cm", 100, etaMin, etaMax);
-  MFTTracksEta5->GetXaxis()->SetTitle("\\eta ");
-  std::unique_ptr<TH1F> MFTTracksEta5_10pos = std::make_unique<TH1F> ("MFT Tracks -5 -10 MC eta", "-10 cm < zVertex < -5 cm", 100, etaMin, etaMax);
-  MFTTracksEta5_10pos->GetXaxis()->SetTitle("\\eta ");
-  std::unique_ptr<TH1F> MFTTracksEta5_10neg = std::make_unique<TH1F> ("MFT Tracks 5 10 MC eta", "5 cm < zVertex < 10 cm", 100, etaMin, etaMax);
-  MFTTracksEta5_10neg->GetXaxis()->SetTitle("\\eta ");
+                              const Char_t *trkFile = "mfttracks.root",
+                              Double_t pMin = 0.0,
+                              Double_t pMax = 100.0,
+                              Double_t deltapMin = -1000.0,
+                              Double_t deltapMax = 1000.0,
+                              Double_t deltaetaMin = -.1,
+                              Double_t deltaetaMax = +.1,
+                              Double_t etaMin = -3.4,
+                              Double_t etaMax = -2.4,
+                              Double_t deltaphiMin = -.2, //-3.15,
+                              Double_t deltaphiMax = .2, //+3.15,
+                              Double_t phiMin = -3.15,
+                              Double_t phiMax = +3.15
+                            ) {
 
 
-  std::unique_ptr<TH1F> MCTracksp5 = std::make_unique<TH1F> ("MC Tracks 5 p", "-5 cm < zVertex < 5 cm", 100, pMin, pMax);
-  MCTracksp5->GetXaxis()->SetTitle("Total p");
-  std::unique_ptr<TH1F> MCTracksp5_10pos = std::make_unique<TH1F> ("MC Tracks -5 -10 p", "-10 cm < zVertex < -5 cm", 100, pMin, pMax);
-  MCTracksp5_10pos->GetXaxis()->SetTitle("Total p");
-  std::unique_ptr<TH1F> MCTracksp5_10neg = std::make_unique<TH1F> ("MC Tracks 5 10 p", "5 cm < zVertex < 10 cm", 100, pMin, pMax);
-  MCTracksp5_10neg->GetXaxis()->SetTitle("Total p");
+  // histos
 
-  std::unique_ptr<TH1F> MFTTracksMCp5 = std::make_unique<TH1F> ("MFT Tracks 5 MC p", "-5 cm < zVertex < 5 cm", 100, pMin, pMax);
-  MFTTracksMCp5->GetXaxis()->SetTitle("Total p");
-  std::unique_ptr<TH1F> MFTTracksMCp5_10pos = std::make_unique<TH1F> ("MFT Tracks -5 -10 MC p", "-10 cm < zVertex < -5 cm", 100, pMin, pMax);
-  MFTTracksMCp5_10pos->GetXaxis()->SetTitle("Total p");
-  std::unique_ptr<TH1F> MFTTracksMCp5_10neg = std::make_unique<TH1F> ("MFT Tracks 5 10 MC p", "5 cm < zVertex < 10 cm", 100, pMin, pMax);
-  MFTTracksMCp5_10neg->GetXaxis()->SetTitle("Total p");
+  enum TH2HistosCodes {
+    kMFTTrackDeltaXYVertex,
+    kMFTrackQPRec_MC,
+    kMFTrackQPtResolution,
+    kMCTracksEtaZ
+  };
 
-  std::unique_ptr<TH1I> Trackablility = std::make_unique<TH1I> ("Trackablility", "In how many disks the tracks has hits", 6, 0, 6);
-  Trackablility->GetXaxis()->SetTitle("Number of disks");
+  std::map<int,const char *> TH2Names {
+    {kMFTTrackDeltaXYVertex, "MFT Tracks Vertex at Z = 0"},
+    {kMFTrackQPRec_MC, "MFT Track QP FITxMC"},
+    {kMFTrackQPtResolution, "MFT Track QPt Resolution"},
+    {kMCTracksEtaZ, "MCTracks_eta_z"}
+  };
 
-  //Histos for Missed (missed tracks that could be tracked)
-  std::unique_ptr<TH1F> MissedlepT = std::make_unique<TH1F> ("Missed Tracks MC pT", "Missed Tracks pT", 100, pMin, pMax);
-  std::unique_ptr<TH1F> Missedp = std::make_unique<TH1F> ("Missed Tracks MC p", "Missed Tracks p", 100, pMin, pMax);
-  std::unique_ptr<TH1F> MissedEta = std::make_unique<TH1F> ("Missed Tracks MC eta", "Missed Pseudorapidity", 100, etaMin, etaMax);
+  std::map<int,const char *> TH2Titles {
+    {kMFTTrackDeltaXYVertex, "Standalone MFT Tracks at Z_vertex"},
+    {kMFTrackQPRec_MC, "Charged Momentum: Reconstructed vs MC"},
+    {kMFTrackQPtResolution, "Charged Momentum Resolution"},
+    {kMCTracksEtaZ, "MC Tracks: Pseudorapidity vs zVertex"}
+  };
 
-  //Histos for Trackables
-  std::unique_ptr<TH1F> TrackablepT = std::make_unique<TH1F> ("Trackables Tracks MC p_T", "Trackables Tracks p_T", 100, pMin, pMax);
-  TrackablepT->GetXaxis()->SetTitle("Transverse p");
-  std::unique_ptr<TH1F> Trackablep = std::make_unique<TH1F> ("Trackables Tracks MC p", "Trackables Tracks p", 100, pMin, pMax);
-  Trackablep->GetXaxis()->SetTitle("Total p");
-  std::unique_ptr<TH1F> TrackableEta = std::make_unique<TH1F> ("Trackables Tracks MC eta", "Trackables Pseudorapidity", 100, etaMin, etaMax);
-  TrackableEta->GetXaxis()->SetTitle("\\eta ");
-
-  //2D Histos
-  std::unique_ptr<TH2F> MFTTrackedEtaZ = std::make_unique<TH2F> ("MFT_Tracked_MC_eta_z", "Reconstructed Tracks", 31, -15, 16, 25, etaMin, etaMax);
-  MFTTrackedEtaZ->GetXaxis()->SetTitle("Vertex PosZ ~[cm]");
-  std::unique_ptr<TH2F> MFTTrackablesEtaZ = std::make_unique<TH2F> ("MFT_Trackables_MC_eta_z", "MFT Trackables:", 31, -15, 16, 25, etaMin, etaMax);
-  MFTTrackablesEtaZ->GetXaxis()->SetTitle("Vertex PosZ ~[cm]");
-  std::unique_ptr<TH2F> MCTracksEtaZ = std::make_unique<TH2F> ("MCTracks_eta_z", "MC Tracks: Pseudorapidity vs zVertex", 31, -15, 16, 25, etaMin, etaMax);
-  MCTracksEtaZ->GetXaxis()->SetTitle("Vertex PosZ ~[cm]");
+  std::map<int, std::array<double,6>> TH2Binning {
+    {kMFTTrackDeltaXYVertex, {300, -.05, .05, 300, -.05, .05} },
+    {kMFTrackQPRec_MC, {150, -10, 10, 150, -10, 10} },
+    {kMFTrackQPtResolution, {200, 0, 5, 200, -10, 10} },
+    {kMCTracksEtaZ, {31, -15, 16, 25, etaMin, etaMax} }
+  };
 
 
-  // MFT Fit Results histos
-  std::unique_ptr<TH1F> MFTTracksP = std::make_unique<TH1F> ("MFT Tracks Fitted p", "Standalone MFT Tracks P", 10000, pMin, pMaxFit);
-  MFTTracksP->GetXaxis()->SetTitle("p ~[GeV]");
-  std::unique_ptr<TH1F> MFTTracksDeltaP = std::make_unique<TH1F> ("MFT Tracks Delta_p", "P_{Fit} - P_{MC}", 10000, -pMaxFit, pMaxFit);
-  MFTTracksDeltaP->GetXaxis()->SetTitle("\\Delta p ~[GeV]");
-  std::unique_ptr<TH1F> MFTTracksDeltaPt = std::make_unique<TH1F> ("MFT Tracks Delta_pt", "Pt_{Fit} - Pt_{MC}", 10000, -pMaxFit, pMaxFit);
-  MFTTracksDeltaPt->GetXaxis()->SetTitle("\\Delta p_t ~[GeV]");
-  std::unique_ptr<TH1F> MFTTrackDeltaEta = std::make_unique<TH1F> ("MFT Tracks Fitted Delta_eta", "\\eta_{Fit} - \\eta_{MC} ", 1000, -.1, +.1);
-  MFTTrackDeltaEta->GetXaxis()->SetTitle("\\Delta \\eta");
-  std::unique_ptr<TH1F> MFTTrackDeltaPhi = std::make_unique<TH1F> ("MFT Tracks Fitted Phi at Vertex", "\\phi _{Fit} - \\phi_{MC}" , 1000, phiMin, phiMax);
-  MFTTrackDeltaPhi->GetXaxis()->SetTitle("\\Delta \\phi ~[rad]");
-  std::unique_ptr<TH1F> MFTTrackDeltaPhiDeg = std::make_unique<TH1F> ("MFT Tracks Fitted Phi at Vertex [deg]", "\\phi _{Fit} - \\phi_{MC}" , 1000, TMath::RadToDeg()*phiMin, TMath::RadToDeg()*phiMax);
-  MFTTrackDeltaPhiDeg->GetXaxis()->SetTitle("\\Delta \\phi ~[deg]");
-  std::unique_ptr<TH1F> MFTTrackDeltaX = std::make_unique<TH1F> ("MFT Tracks Delta X", "Standalone MFT Tracks Delta X at Z_vertex", 1000, -.3, .3);
-  MFTTrackDeltaX->GetXaxis()->SetTitle("\\Delta x ~[cm]");
-  std::unique_ptr<TH1F> MFTTrackDeltaY = std::make_unique<TH1F> ("MFT Tracks Delta Y", "Standalone MFT Tracks Delta Y at Z_vertex", 1000, -.3, .3);
-  MFTTrackDeltaY->GetXaxis()->SetTitle("\\Delta y ~[cm]");
-  std::unique_ptr<TH1F> MFTTrackR = std::make_unique<TH1F> ("MFT Tracks Delta R", "Standalone MFT Tracks Delta R at Z_vertex", 10000, -2, +2);
-  MFTTrackR->GetXaxis()->SetTitle("\\Delta r ~[cm]");
-  std::unique_ptr<TH2F> MFTTrackDeltaXYVertex = std::make_unique<TH2F> ("MFT Tracks Vertex at Z_Vertex = 0", "Standalone MFT Tracks at Z_vertex", 250, -.05, .05,1000, -.05, .05);
-  MFTTrackDeltaXYVertex->GetXaxis()->SetTitle("\\Delta x ~[cm]");
-  MFTTrackDeltaXYVertex->GetYaxis()->SetTitle("\\Delta y ~[cm]");
-  std::unique_ptr<TH1F> MFTTrackQ = std::make_unique<TH1F> ("MFT Tracks Q", "Standalone MFT Tracks Charge", 5, -2.1, 2.1);
-  MFTTrackQ->GetXaxis()->SetTitle("Q");
+  std::map<int,const char *> TH2XaxisTitles {
+    {kMFTTrackDeltaXYVertex, "\\Delta x ~[cm]"},
+    {kMFTrackQPRec_MC, "(q.p)_{MC} [GeV]"},
+    {kMFTrackQPtResolution, "p_{MC} [GeV]"},
+    {kMCTracksEtaZ, "Vertex PosZ [cm]"}
+  };
+
+  std::map<int,const char *> TH2YaxisTitles {
+    {kMFTTrackDeltaXYVertex, "\\Delta y ~[cm]"},
+    {kMFTrackQPRec_MC, "(q.p)_{fit} [GeV]"},
+    {kMFTrackQPtResolution, "(q.p_t)_{fit} / (q.p_t)_{MC}"},
+    {kMCTracksEtaZ, "\\eta"}
+  };
+
+
+  enum TH1HistosCodes {
+    kMFTTracksP,
+    kMFTTracksP_res,
+    kMFTTracksPt_res,
+    kMFTTrackDeltaEta,
+    kMFTTrackDeltaPhi,
+    kMFTTrackDeltaPhiDeg,
+    kMFTTrackDeltaX,
+    kMFTTrackDeltaY,
+    kMFTTrackR,
+    kMFTTrackQ,
+    kMCTrackspT,
+    kMCTracksp,
+    kMCTrackEta
+  };
+
+  std::map<int,const char *> TH1Names {
+    {kMFTTracksP, "MFT Tracks Fitted p"},
+    {kMFTTracksP_res, "MFT Tracks P resolution"},
+    {kMFTTracksPt_res, "MFT Tracks P_t resolution"},
+    {kMFTTrackDeltaEta, "MFT Tracks Fitted Delta_eta"},
+    {kMFTTrackDeltaPhi, "MFT Tracks Fitted Phi at Vertex"},
+    {kMFTTrackDeltaPhiDeg,"MFT Tracks Fitted Phi at Vertex [deg]"},
+    {kMFTTrackDeltaX, "MFT Tracks Delta X"},
+    {kMFTTrackDeltaY, "MFT Tracks Delta Y"},
+    {kMFTTrackR, "MFT Tracks Delta R"},
+    {kMFTTrackQ, "MFT Tracks Q"},
+    {kMCTrackspT, "MC Tracks p_T"},
+    {kMCTracksp, "MC Tracks p"},
+    {kMCTrackEta, "MC Tracks eta"}
+  };
+
+  std::map<int,const char *> TH1Titles {
+    {kMFTTracksP, "Standalone MFT Tracks P"},
+    {kMFTTracksP_res, "P_{Fit}/P_{MC}"},
+    {kMFTTracksPt_res,"Pt_{Fit}/Pt_{MC}" },
+    {kMFTTrackDeltaEta, "\\eta_{Fit} - \\eta_{MC} "},
+    {kMFTTrackDeltaPhi, "\\phi _{Fit} - \\phi_{MC}"},
+    {kMFTTrackDeltaPhiDeg, "\\phi _{Fit} - \\phi_{MC}"},
+    {kMFTTrackDeltaX, "Standalone MFT Tracks Delta X at Z_vertex"},
+    {kMFTTrackDeltaY, "Standalone MFT Tracks Delta Y at Z_vertex"},
+    {kMFTTrackR, "Standalone MFT Tracks Delta R at Z_vertex"},
+    {kMFTTrackQ, "Standalone MFT Tracks Charge"},
+    {kMCTrackspT, "MC Tracks p_T"},
+    {kMCTracksp, "MC Tracks p"},
+    {kMCTrackEta, "MC Tracks Pseudorapidity"}
+  };
+
+  std::map<int, std::array<double,3>> TH1Binning {
+    {kMFTTracksP, {500, pMin, pMax} },
+    {kMFTTracksP_res,  {500, 0, 50}},
+    {kMFTTracksPt_res,  {300, 0, 10}},
+    {kMFTTrackDeltaEta, {1000, deltaetaMin, deltaetaMax}},
+    {kMFTTrackDeltaPhi, {1000, deltaphiMin, deltaphiMax}},
+    {kMFTTrackDeltaPhiDeg, {1000, TMath::RadToDeg()*deltaphiMin, TMath::RadToDeg()*deltaphiMax}},
+    {kMFTTrackDeltaX, {1000, -.3, .3}},
+    {kMFTTrackDeltaY, {1000, -.3, .3}},
+    {kMFTTrackR, {250, 0, 0.5}},
+    {kMFTTrackQ, {5, -2.1, 2.1}},
+    {kMCTrackspT, {5000, 0, 50}},
+    {kMCTracksp, {1000, pMin, pMax}},
+    {kMCTrackEta, {1000, etaMin, etaMax}}
+  };
+
+  std::map<int,const char *> TH1XaxisTitles {
+    {kMFTTracksP, "p [GeV]"},
+    {kMFTTracksP_res, "P_{Fit}/P_{MC}"},
+    {kMFTTracksPt_res, "Pt_{Fit}/Pt_{MC}"},
+    {kMFTTrackDeltaEta, "\\Delta \\eta"},
+    {kMFTTrackDeltaPhi, "\\Delta \\phi ~[rad]"},
+    {kMFTTrackDeltaPhiDeg, "\\Delta \\phi ~[deg]"},
+    {kMFTTrackDeltaX, "\\Delta x ~[cm]"},
+    {kMFTTrackDeltaY, "\\Delta y ~[cm]"},
+    {kMFTTrackR, "\\Delta r ~[cm]"},
+    {kMFTTrackQ, "Q"},
+    {kMCTrackspT, "p_t [GeV]"},
+    {kMCTracksp, "p [GeV]"},
+    {kMCTrackEta, " \\eta"}
+  };
 
 
 
+  const int nTH1Histos = TH1Names.size();
+  std::vector<std::unique_ptr<TH1F>> TH1Histos(nTH1Histos);
+  auto nHisto = 0;
+  for (auto& h : TH1Histos) {
+    h = std::make_unique<TH1F> (TH1Names[nHisto], TH1Titles[nHisto], (int)TH1Binning[nHisto][0], TH1Binning[nHisto][1], TH1Binning[nHisto][2]);
+    h->GetXaxis()->SetTitle(TH1XaxisTitles[nHisto]);
+
+    ++nHisto;
+    }
+
+  const int nTH2Histos = TH2Names.size();
+  std::vector<std::unique_ptr<TH2F>> TH2Histos(nTH2Histos);
+  auto n2Histo = 0;
+  for (auto& h : TH2Histos) {
+    h = std::make_unique<TH2F> (TH2Names[n2Histo], TH2Titles[n2Histo], (int)TH2Binning[n2Histo][0], TH2Binning[n2Histo][1], TH2Binning[n2Histo][2], (int)TH2Binning[n2Histo][3], TH2Binning[n2Histo][4], TH2Binning[n2Histo][5]);
+    h->GetXaxis()->SetTitle(TH2XaxisTitles[n2Histo]);
+    h->GetYaxis()->SetTitle(TH2YaxisTitles[n2Histo]);
+    h->SetOption("COLZ");
+    ++n2Histo;
+    }
+
+  Int_t nChargeMatch = 0;
+  Int_t nChargeMiss = 0;
 
   // MC
   TFile *o2sim_KineFileIn = new TFile(o2sim_KineFile);
@@ -205,6 +295,11 @@ void MFTFitterTrackerChecker( Double_t pMax = 40.0,
   o2SimKineTree -> GetEntry(0);
   o2MFTHitsTree -> GetEntry(0);
 
+  auto field_z = getZField(0, 0, -61.4); // Get field at Center of MFT
+
+  TFile outFile("MFTFitterTrackerCheck.root","RECREATE");
+
+
   for (auto event = 0 ; event < numberOfEvents ; event++) { // Resize vector to accomodate found status of all tracks in all events
     o2SimKineTree -> GetEntry(event);
     auto numberOfTracksThisEvent = eventHeader->getMCEventStats().getNKeptTracks();
@@ -224,8 +319,8 @@ void MFTFitterTrackerChecker( Double_t pMax = 40.0,
   // Part 3: Calculate Efficiencies
 
 
-  // Part 1: Reconstructed MFT Tracks
-   std::cout << "Starting Part 1: Reconstructed MFT Tracks!" << std::endl;
+  // Reconstructed MFT Tracks
+   std::cout << "Loop over reconstructed MFT Tracks!" << std::endl;
   // TracksMFT - Identify reconstructed tracks
   for (auto &trackMFT : trackMFTVec) {
   auto thisTrackMCCompLabels = trackMFT.getMCCompLabels();
@@ -264,359 +359,128 @@ void MFTFitterTrackerChecker( Double_t pMax = 40.0,
       if(allFoundTracksMFT[eventID][thisTrkID] == true) {
         o2SimKineTree -> GetEntry(eventID);
         MCTrackT<float>* thisTrack =  &(*mcTr).at(thisTrkID);
-        auto vx_MC = thisTrack->GetStartVertexCoordinatesX();
-        auto vy_MC = thisTrack->GetStartVertexCoordinatesY();
-        auto vz_MC = thisTrack->GetStartVertexCoordinatesZ();
-        auto pt_MC = thisTrack->GetPt();
-        auto p_MC = thisTrack->GetP();
-        auto phi_MC = TMath::ATan2(thisTrack->Py(),thisTrack->Px());
-        auto pdgcode_MC = thisTrack->GetPdgCode();
-        //std::cout << "pdgcode_MC = " <<  pdgcode_MC;
-        int q_MC;
-        if (TDatabasePDG::Instance()->GetParticle(pdgcode_MC)) {
-         q_MC = TDatabasePDG::Instance()->GetParticle(pdgcode_MC)->Charge()/3;
-         //std::cout << " => " <<  TDatabasePDG::Instance()->GetParticle(pdgcode_MC)->GetName() << " ; q = " << q_MC <<  "\n";
-         }
+        if (thisTrack->getMotherTrackId() == -1) { // Only primaries
+          auto vx_MC = thisTrack->GetStartVertexCoordinatesX();
+          auto vy_MC = thisTrack->GetStartVertexCoordinatesY();
+          auto vz_MC = thisTrack->GetStartVertexCoordinatesZ();
+          auto Pt_MC = thisTrack->GetPt();
+          auto P_MC = thisTrack->GetP();
+          auto phi_MC = TMath::ATan2(thisTrack->Py(),thisTrack->Px());
+          auto eta_MC = atanh (thisTrack->GetStartVertexMomentumZ()/P_MC); // eta;
+          auto pdgcode_MC = thisTrack->GetPdgCode();
+          //std::cout << "pdgcode_MC = " <<  pdgcode_MC;
+          int Q_MC;
+          if (TDatabasePDG::Instance()->GetParticle(pdgcode_MC)) {
+           Q_MC = TDatabasePDG::Instance()->GetParticle(pdgcode_MC)->Charge()/3;
+           //std::cout << " => " <<  TDatabasePDG::Instance()->GetParticle(pdgcode_MC)->GetName() << " ; q = " << Q_MC <<  "\n";
+           }
 
-         else {
-           q_MC = 0;
-           std::cout << " => pdgcode ERROR " << q_MC <<  "\n";
-         }
-        auto eta_MC = atanh (thisTrack->GetStartVertexMomentumZ()/p_MC); // eta;
-        extrapMFTTrackHelixToZ(trackMFT, vz_MC, -5.0); // propagate track to vertex Z
-        auto dx = trackMFT.getX() - vx_MC;
-        auto dy = trackMFT.getY() - vy_MC;
-        auto d_eta = trackMFT.getEta() - eta_MC;
-        auto d_P = trackMFT.getP() - p_MC;
-        auto d_Pt = trackMFT.getPt() - pt_MC;
-        auto d_Phi = trackMFT.getPhi() - phi_MC;
-        MFTTracksP->Fill(trackMFT.getP());
-        MFTTracksDeltaP->Fill(d_P);
-        MFTTracksDeltaPt->Fill(d_Pt);
-        MFTTrackDeltaEta->Fill(d_eta);
-        MFTTrackDeltaPhi->Fill(d_Phi);
-        MFTTrackDeltaPhiDeg->Fill(TMath::RadToDeg()*d_Phi);
-        MFTTrackDeltaX->Fill(dx);
-        MFTTrackDeltaY->Fill(dy);
-        MFTTrackDeltaXYVertex->Fill(dx,dy);
-        MFTTrackR->Fill(sqrt(dx*dx+dy*dy));
-        MFTTrackQ->Fill(trackMFT.getCharge()-q_MC);
+           else {
+             Q_MC = 0;
+             std::cout << " => pdgcode ERROR " << Q_MC <<  "\n";
+           }
+
+          //auto forceP = 0.5;
+          //auto forcePt = forceP/sqrt(1+trackMFT.getTanl()*trackMFT.getTanl());
+          //trackMFT.setInvQPt(1.0/forcePt);
+          //trackMFT.setCharge(-1);
+
+          extrapMFTTrackHelixToZ(trackMFT, vz_MC, field_z); // propagate track to vertex Z
+          auto dx = trackMFT.getX() - vx_MC;
+          auto dy = trackMFT.getY() - vy_MC;
+          auto d_eta = trackMFT.getEta() - eta_MC;
+          auto Pt_fit = trackMFT.getPt();
+          auto P_fit = trackMFT.getP();
+          auto Q_fit = trackMFT.getCharge();
+          auto P_res = P_fit / P_MC;
+          auto Pt_res = Pt_fit / Pt_MC;
+          auto d_Phi = trackMFT.getPhi() - phi_MC;
+          auto d_Charge = Q_fit-Q_MC;
+
+          TH1Histos[kMFTTracksP]->Fill(trackMFT.getP());
+          TH1Histos[kMFTTracksP_res]->Fill(P_res);
+          TH1Histos[kMFTTracksPt_res]->Fill(Pt_res);
+          TH1Histos[kMFTTrackDeltaEta]->Fill(d_eta);
+          TH1Histos[kMFTTrackDeltaPhi]->Fill(d_Phi);
+          TH1Histos[kMFTTrackDeltaPhiDeg]->Fill(TMath::RadToDeg()*d_Phi);
+          TH1Histos[kMFTTrackDeltaX]->Fill(dx);
+          TH1Histos[kMFTTrackDeltaY]->Fill(dy);
+          TH1Histos[kMFTTrackR]->Fill(sqrt(dx*dx+dy*dy));
+          TH1Histos[kMFTTrackQ]->Fill(d_Charge);
+          TH2Histos[kMFTTrackDeltaXYVertex]->Fill(dx,dy);
+          TH2Histos[kMFTrackQPRec_MC]->Fill(P_MC*Q_MC,P_fit*Q_fit);
+          TH2Histos[kMFTrackQPtResolution]->Fill(Pt_MC,Q_MC*Pt_fit/Pt_MC*Q_fit);
+
+          TH1Histos[kMCTrackspT]->Fill(Pt_MC);
+          TH1Histos[kMCTracksp]->Fill(P_MC);
+          TH1Histos[kMCTrackEta]->Fill(eta_MC);
+          TH2Histos[kMCTracksEtaZ]->Fill(vz_MC,eta_MC);
+
+          if (d_Charge == 0) {
+            nChargeMatch++;
+          }
+          else
+          nChargeMiss++;
+          }
+
         }
   } // Loop on TracksMFT
 
-  TFile outFile("MFTFitterTrackerCheck.root","RECREATE");
 
-  // Part 2: MC hits and tracks
-  if(!DISABLE_PART2)  {
-  std::cout << "Starting Part 2: MC hits and tracks!" << std::endl;
-  for (Int_t event=0; event<numberOfEvents ; event++) { // Loop over events in o2sim
-    //std::cout << "Loop over events in o2sim. Event = " << event << std::endl;
-    //if(event % 100 == 0)  std::cout << event << " ...\n";
-    o2MFTHitsTree -> GetEntry(event);
-    o2SimKineTree -> GetEntry(event);
-    Int_t nMFTHits = mfthit->size(); // Number of mft hits in this event
-    //std::cout << "Event " << event << " has " << eventHeader->getMCEventStats().getNKeptTracks() << " tracks and " << nMFTHits << " hits\n";
-
-    std::vector<trackHasHitsinMFTDisks> mcTrackHasHitsInMFTDisks(eventHeader->getMCEventStats().getNKeptTracks(),{0,0,0,0,0}); //
-
-    if(DEBUG_VERBOSE) std::cout << "Loop over " << nMFTHits << " mfthits to identify trackable MFT tracks in event " <<  event << std::endl;
-    for (Int_t n_hit=0 ; n_hit < nMFTHits; n_hit++) { // Loop over mfthits to identify trackable tracks
-      Hit* hitp = &(*mfthit).at(n_hit);
-      Int_t trID = hitp->GetTrackID(); // ID of the tracks having given the hit
-      //std::cout << "n_hit = " << n_hit << " ** trID = " << trID << std::endl;
-
-      //Float_t z = hitp->GetZ(); // Z position of the hit => Identify MFT disk
-      mcTrackHasHitsInMFTDisks[trID][mftChipMapper.chip2Layer(hitp->GetDetectorID())/2] = true;
-      }
-
-    for (Int_t trID=0 ; trID < eventHeader->getMCEventStats().getNKeptTracks(); trID++) { // Loop on MC tracks
-      //std::cout << "Loop on tracks to build histos. Track " << trID << " at event " << event << " -> " ;
-
-      //fill MC histograms
-      MCTrackT<float>* thisTrack =  &(*mcTr).at(trID);
-      auto z = thisTrack->GetStartVertexCoordinatesZ();
-      auto pt = thisTrack->GetPt();
-      auto p = thisTrack->GetP();
-      auto eta = atanh (thisTrack->GetStartVertexMomentumZ()/p); // eta;
-      MCTrackspT->Fill(pt);
-      MCTracksp->Fill(p);
-      MCTrackEta->Fill(eta);
-      MCTracksEtaZ->Fill(z,eta);
-      if( (z>-5) & (z<5) ) {
-        MCTracksEta5->Fill(eta);
-        MCTracksp5->Fill(p);
-      }
-      if( (z>5) & (z<10) ) {
-        MCTracksEta5_10pos->Fill(eta);
-        MCTracksp5_10pos->Fill(p);
-      }
-      if( (z>-10) & (z<-5) ) {
-        MCTracksEta5_10neg->Fill(eta);
-        MCTracksp5_10neg->Fill(p);
-      }
-
-      // Count disks "touched" by the track
-      int nMFTDisksHasHits = 0;
-      for(auto disk: {0,1,2,3,4}) nMFTDisksHasHits+= int(mcTrackHasHitsInMFTDisks[trID][disk]);
-      Trackablility->Fill(nMFTDisksHasHits);
-      //std::cout << "nMFTDisksHasHits = " << nMFTDisksHasHits; // << std::endl;
-
-      if(nMFTDisksHasHits>=4) {   //Track is trackable if has left hits on at least 4 disks
-
-        nMFTTrackable++;
-        MFTTrackablesEtaZ->Fill(z,eta);
-        TrackablepT->Fill(pt);
-        Trackablep->Fill(p);
-        TrackableEta->Fill(eta);
-
-
-        bool wasFound = allFoundTracksMFT[event][trID];
-
-        if(wasFound) {
-          MFTTracksMCpT->Fill(pt);
-          MFTTracksMCp->Fill(p);
-          MFTTrackMCEta->Fill(eta);
-
-
-          if( (z>-5) & (z<5) ) {
-            MFTTracksEta5->Fill(eta);
-            MFTTracksMCp5->Fill(p);
-          }
-          if( (z>5) & (z<10) ) {
-            MFTTracksEta5_10pos->Fill(eta);
-            MFTTracksMCp5_10pos->Fill(p);
-          }
-          if( (z>-10) & (z<-5) ) {
-            MFTTracksEta5_10neg->Fill(eta);
-            MFTTracksMCp5_10neg->Fill(p);
-          }
-
-
-          if(allFoundTracksMFT[event][trID]) {
-            MFTTracksMCpT->Fill(thisTrack->GetPt());
-            MFTTracksMCp->Fill(thisTrack->GetP());
-            MFTTrackMCEta->Fill(eta);
-          }
-        }
-      } else {  // Fill histograms for Missed Tracks
-        MissedlepT->Fill(thisTrack->GetPt());
-        Missedp->Fill(thisTrack->GetP());
-        MissedEta->Fill(eta);
-      }
-    //std::cout << " Finished Track " << trID << std::endl;
-
-    } // end Loop on tracks
-    //std::cout << "Finished event " << event << std::endl;
-    } // end loop over events
-    // Part 3: Calculate Efficiencies
-    //std::cout << "Building efficiencies histos..." << std::endl;
-    TH1F MFTEfficiencypT = (*MFTTracksMCpT)/ (*TrackablepT);
-    TH1F MFTTEfficiencyp = (*MFTTracksMCp) / (*Trackablep);
-    TH1F MFTEfficiencyEta = (*MFTTrackMCEta) / (*TrackableEta);
-    TH2F MFTTrackerEfficiency = (*MFTTrackedEtaZ) / (*MFTTrackablesEtaZ);
-    TH2F MFTEfficiency2D = (*MFTTrackedEtaZ) / (*MCTracksEtaZ);
-    TH2F MFTAcceptance = (*MFTTrackablesEtaZ) / (*MCTracksEtaZ);
-    TH1F MFTEffsEta5 = (*MFTTracksEta5)/(*MCTracksEta5);
-    TH1F MFTEffEta5_10pos = (*MFTTracksEta5_10pos)/(*MCTracksEta5_10pos);
-    TH1F MFTEffEta5_10neg = (*MFTTracksEta5_10neg)/(*MCTracksEta5_10neg);
-
-
-    TH1F MFTEffsp5 = (*MFTTracksMCp5)/(*MCTracksp5);
-    TH1F MFTEffp5_10pos = (*MFTTracksMCp5_10pos)/(*MCTracksp5_10pos);
-    TH1F MFTEffp5_10neg = (*MFTTracksMCp5_10neg)/(*MCTracksp5_10neg);
-
-    // Stacks
-    THStack mftEtaStack("PStack","MFT Tracks");
-    MFTEffsEta5.SetLineColor(kBlack);
-    mftEtaStack.Add(&MFTEffsEta5,"nostack");
-    MFTEffEta5_10pos.SetLineColor(kBlue);
-    mftEtaStack.Add(&MFTEffEta5_10pos,"nostack");
-    MFTEffEta5_10neg.SetLineColor(kRed);
-    mftEtaStack.Add(&MFTEffEta5_10neg,"nostack");
-
-
-    MFTEfficiencypT.SetNameTitle("MFT Efficiency pT", "MFT Efficiency pT");
-    MFTTEfficiencyp.SetNameTitle("MFT Efficiency p", "MFT Efficiency p");
-    MFTEfficiencyEta.SetNameTitle("MFT Efficiency eta", "MFT Efficiency Pseudorapidity");
-    MFTTrackerEfficiency.SetNameTitle("MFT Tracker Efficiency", "MFT Tracker Efficiency");
-    MFTTrackerEfficiency.GetXaxis()->SetTitle("Vertex PosZ [cm]");
-
-    MFTEfficiency2D.SetNameTitle("MFT Efficiency", "MFT Efficiency");
-    MFTEfficiency2D.GetXaxis()->SetTitle("Vertex PosZ [cm]");
-
-    MFTAcceptance.SetNameTitle("MFT Acceptance", "MFT Acceptance");
-    MFTAcceptance.GetXaxis()->SetTitle("Vertex PosZ [cm]");
-
-    MFTEffsEta5.SetNameTitle("MFT Eta Efficiency5_5", "-5 cm < z < 5 cm");
-    MFTEffsEta5.GetXaxis()->SetTitle("\\eta ");
-    MFTEffEta5_10pos.SetNameTitle("MFT Eta Efficiency_5_10pos", "5 cm < z < 10 cm");
-    MFTEffEta5_10pos.GetXaxis()->SetTitle("\\eta ");
-    MFTEffEta5_10neg.SetNameTitle("MFT Eta Efficiency_10_5neg", "-10 cm < z < -5 cm");
-    MFTEffEta5_10neg.GetXaxis()->SetTitle("\\eta ");
-
-    MFTEffsp5.SetNameTitle("MFT P Efficiency5_5", "-5 cm < z < 5 cm");
-    MFTEffsp5.GetXaxis()->SetTitle("P (GeV)");
-    MFTEffp5_10pos.SetNameTitle("MFT P Efficiency_5_10pos", "5 cm < z < 10 cm");
-    MFTEffp5_10pos.GetXaxis()->SetTitle("P (GeV)");
-    MFTEffp5_10neg.SetNameTitle("MFT P Efficiency_10_5neg", "-10 cm < z < -5 cm");
-    MFTEffp5_10neg.GetXaxis()->SetTitle("P (GeV)");
-
-    MFTEffsEta5.SetNameTitle("MFT Eta Efficiency5_5", "-5 cm < z < 5 cm");
-    MFTEffsEta5.GetXaxis()->SetTitle("\\eta ");
-    MFTEffEta5_10pos.SetNameTitle("MFT Eta Efficiency_5_10pos", "5 cm < z < 10 cm");
-    MFTEffEta5_10pos.GetXaxis()->SetTitle("\\eta ");
-    MFTEffEta5_10neg.SetNameTitle("MFT Eta Efficiency_10_5neg", "-10 cm < z < -5 cm");
-    MFTEffEta5_10neg.GetXaxis()->SetTitle("\\eta ");
-
-
-
-
-
-
-
-
-    MFTTrackablesEtaZ->SetOption("CONT4");
-    MFTTrackablesEtaZ->Write();
-
-    MCTrackspT->Write();
-    MCTracksp->Write();
-    MCTrackEta->Write();
-
-    MFTTracksMCpT->Write();
-    MFTTracksMCp->Write();
-    MFTTrackMCEta->Write();
-
-    MFTTracksMCpT->Write();
-    MFTTracksMCp->Write();
-    MFTTrackMCEta->Write();
-
-    MFTEfficiencypT.Write();
-    MFTTEfficiencyp.Write();
-    MFTEfficiencyEta.Write();
-
-    MCTracksEta5->Write();
-    MCTracksEta5_10pos->Write();
-    MCTracksEta5_10neg->Write();
-
-    MFTTracksEta5->Write();
-    MFTTracksEta5_10pos->Write();
-    MFTTracksEta5_10neg->Write();
-
-    MCTracksp5->Write();
-    MCTracksp5_10pos->Write();
-    MCTracksp5_10neg->Write();
-
-
-    MFTTracksMCp5->Write();
-    MFTTracksMCp5_10pos->Write();
-    MFTTracksMCp5_10neg->Write();
-
-    MFTEffsEta5.Write();
-    MFTEffEta5_10pos.Write();
-    MFTEffEta5_10neg.Write();
-
-    MFTEffsp5.Write();
-    MFTEffp5_10pos.Write();
-    MFTEffp5_10neg.Write();
-
-    mftEtaStack.Write();
-
-    MissedlepT->Write();
-    Missedp->Write();
-    MissedEta->Write();
-
-    Trackablility->Write();
-
-    TrackablepT->Write();
-    Trackablep->Write();
-    TrackableEta->Write();
-
-    MCTracksEtaZ->SetOption("CONT4");
-    MCTracksEtaZ->Write();
-
-
-
-    MFTTrackedEtaZ->SetOption("CONT4");
-    MFTTrackedEtaZ->Write();
-
-
-    MFTTrackerEfficiency.SetOption("CONT4");
-    MFTTrackerEfficiency.Write();
-
-    MFTEfficiency2D.SetOption("CONT4");
-    MFTEfficiency2D.Write();
-
-    MFTAcceptance.SetOption("CONT4");
-    MFTAcceptance.Write();
-
-
-}
-
-
-
-
-
-
-
-
-// Write histograms to file
-//std::cout << "Writting histograms to file..." << std::endl;
-
-
-
-
-// MFT Fitted Results
-MFTTracksP->Write();
-MFTTracksDeltaP->Write();
-MFTTracksDeltaPt->Write();
-MFTTrackDeltaEta->Write();
-MFTTrackDeltaPhi->Write();
-MFTTrackDeltaPhiDeg->Write();
-MFTTrackDeltaX->Write();
-MFTTrackDeltaY->Write();
-MFTTrackR->Write();
-MFTTrackDeltaXYVertex->Write();
-MFTTrackQ->Write();
-
+// Customize histograms
+gStyle->SetStatFormat("4.3g");
+gStyle->SetStatW(.38);
+gStyle->SetStatH(.26);
+
+TH1Histos[kMFTTrackQ]->SetTitle(Form("nChargeMatch = %d (%.2f%%)", nChargeMatch, 100.*nChargeMatch/(nChargeMiss+nChargeMatch)));
+
+// Write histograms to file and export images
+for (auto& h : TH2Histos) {
+  h->Write();
+  exportHisto(*h);
+  }
+
+for (auto& h : TH1Histos) {
+  h->Write();
+  exportHisto(*h);
+  }
 outFile.Close();
+
 
 Int_t totalRecoMFTTracks = nCleanTracksMFT + nInvalidTracksMFT;
 std::cout << std::endl;
 std::cout << "---------------------------------------------------" << std::endl;
 std::cout << "-----------   Track finding Summary   -------------" << std::endl;
 std::cout << "---------------------------------------------------" << std::endl;
-std::cout << "Number of MFT trackables = " << nMFTTrackable << std::endl;
 std::cout << "Number of reconstructed MFT Tracks = " << totalRecoMFTTracks << std::endl;
 std::cout << "Number of clean MFT Tracks = " << nCleanTracksMFT << std::endl;
-std::cout << "Number of mixed MFT Tracks = " << nInvalidTracksMFT << std::endl;
-std::cout << "---------------------------------------------------" << std::endl;
-std::cout << "nCleanTracksMFT = " << nCleanTracksMFT << std::endl;
-std::cout << "nInvalidTracksMFT = " << nInvalidTracksMFT << " (" << 100.f*nInvalidTracksMFT/(nCleanTracksMFT+nInvalidTracksMFT) << " %)" << std::endl;
+std::cout << "Number of invalid MFT Tracks = " << nInvalidTracksMFT << std::endl;
 std::cout << "---------------------------------------------------" << std::endl;
 std::cout << std::endl;
 
 std::cout << "---------------------------------------------------" << std::endl;
 std::cout << "-------------   Fitting Summary   -----------------" << std::endl;
 std::cout << "---------------------------------------------------" << std::endl;
-std::cout << " P_mean = " << MFTTracksP->GetMean() << std::endl;
-std::cout << " P_StdDev = " << MFTTracksP->GetStdDev() << std::endl;
-std::cout << " DeltaP_mean = " << MFTTracksP->GetMean() << std::endl;
-std::cout << " DeltaP_StdDev = " << MFTTracksP->GetStdDev() << std::endl;
-std::cout << " DeltaPt_mean = " << MFTTracksDeltaPt->GetMean() << std::endl;
-std::cout << " DeltaPt_StdDev = " << MFTTracksDeltaPt->GetStdDev() << std::endl;
-std::cout << " Eta_mean = " << MFTTrackDeltaEta->GetMean() << std::endl;
-std::cout << " Eta_StdDev = " << MFTTrackDeltaEta->GetStdDev() << std::endl;
-std::cout << " Phi_mean = " << MFTTrackDeltaPhi->GetMean() << std::endl;
-std::cout << " Phi_StdDev = " << MFTTrackDeltaPhi->GetStdDev() << std::endl;
-std::cout << " Phi_mean = " << MFTTrackDeltaPhiDeg->GetMean() << std::endl;
-std::cout << " Phi_StdDev = " << MFTTrackDeltaPhiDeg->GetStdDev() << std::endl;
-std::cout << " X_mean = " << MFTTrackDeltaX->GetMean() << std::endl;
-std::cout << " X_StdDev = " << MFTTrackDeltaX->GetStdDev() << std::endl;
-std::cout << " Y_mean = " << MFTTrackDeltaY->GetMean() << std::endl;
-std::cout << " Y_StdDev = " << MFTTrackDeltaY->GetStdDev() << std::endl;
-std::cout << " R_mean = " << MFTTrackR->GetMean() << std::endl;
-std::cout << " R_StdDev = " << MFTTrackR->GetStdDev() << std::endl;
-std::cout << " Charge_mean = " << MFTTrackDeltaY->GetMean() << std::endl;
+std::cout << " P_mean = " << TH1Histos[kMFTTracksP]->GetMean() << std::endl;
+std::cout << " P_StdDev = " << TH1Histos[kMFTTracksP]->GetStdDev() << std::endl;
+std::cout << " P_Res_mean = " << TH1Histos[kMFTTracksP_res]->GetMean() << std::endl;
+std::cout << " P_Res_StdDev = " << TH1Histos[kMFTTracksP_res]->GetStdDev() << std::endl;
+std::cout << " Pt_Res_mean = " << TH1Histos[kMFTTracksPt_res]->GetMean() << std::endl;
+std::cout << " Pt_Res_StdDev = " << TH1Histos[kMFTTracksPt_res]->GetStdDev() << std::endl;
+std::cout << " Eta_mean = " << TH1Histos[kMFTTrackDeltaEta]->GetMean() << std::endl;
+std::cout << " Eta_StdDev = " << TH1Histos[kMFTTrackDeltaEta]->GetStdDev() << std::endl;
+std::cout << " Phi_mean = " << TH1Histos[kMFTTrackDeltaPhi]->GetMean() << std::endl;
+std::cout << " Phi_StdDev = " << TH1Histos[kMFTTrackDeltaPhi]->GetStdDev() << std::endl;
+std::cout << " Phi_mean = " << TH1Histos[kMFTTrackDeltaPhiDeg]->GetMean() << std::endl;
+std::cout << " Phi_StdDev = " << TH1Histos[kMFTTrackDeltaPhiDeg]->GetStdDev() << std::endl;
+std::cout << " DeltaX_mean = " << TH1Histos[kMFTTrackDeltaX]->GetMean() << std::endl;
+std::cout << " DeltaX_StdDev = " << TH1Histos[kMFTTrackDeltaX]->GetStdDev() << std::endl;
+std::cout << " DeltaY_mean = " << TH1Histos[kMFTTrackDeltaY]->GetMean() << std::endl;
+std::cout << " DeltaY_StdDev = " << TH1Histos[kMFTTrackDeltaY]->GetStdDev() << std::endl;
+std::cout << " R_mean = " << TH1Histos[kMFTTrackR]->GetMean() << std::endl;
+std::cout << " R_StdDev = " << TH1Histos[kMFTTrackR]->GetStdDev() << std::endl;
+std::cout << " Charge_mean = " << TH1Histos[kMFTTrackDeltaY]->GetMean() << std::endl;
+std::cout << " nChargeMatch = " << nChargeMatch << " (" << 100.*nChargeMatch/(nChargeMiss+nChargeMatch) << "%)" << std::endl;
 std::cout << "---------------------------------------------------" << std::endl;
 
 }
