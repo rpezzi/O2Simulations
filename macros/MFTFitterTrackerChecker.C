@@ -16,6 +16,8 @@ using trackHasHitsinMFTDisks = std::array<bool,5>; // Disks with hits from a MFT
 
 bool DEBUG_VERBOSE = false;
 
+bool EXPORT_HISTOS_IMAGES = false;
+
 
 //_________________________________________________________________________________________________
 double getZField(double x, double y, double z) {
@@ -45,7 +47,7 @@ void extrapMFTTrackHelixToZ(o2::mft::TrackMFT& track, double zEnd, double Field)
   }
 
   // Compute track parameters
-  double dZ = (zEnd - track.getZ()); // Propagate in meters
+  double dZ = (zEnd - track.getZ());
   double x0 = track.getX();
   double y0 = track.getY();
   double phi0 = track.getPhi();
@@ -54,7 +56,8 @@ void extrapMFTTrackHelixToZ(o2::mft::TrackMFT& track, double zEnd, double Field)
   double tanl0 = track.getTanl();
   double invqpt0 = track.getInvQPt();
 
-  double k = Field * o2::constants::math::B2C;
+  double k = - Field * o2::constants::math::B2C;
+  //double k =  Field * 0.299792458e-3;
   double deltax = (dZ * cosphi0 / tanl0 - dZ * dZ * k * invqpt0 * sinphi0 / (2. * tanl0 * tanl0));
   double deltay = (dZ * sinphi0 / tanl0 + dZ * dZ * k * invqpt0 * cosphi0 / (2. * tanl0 * tanl0));
 
@@ -94,16 +97,12 @@ void MFTFitterTrackerChecker( const Char_t *o2sim_KineFile = "o2sim_Kine.root",
                               const Char_t *trkFile = "mfttracks.root",
                               Double_t pMin = 0.0,
                               Double_t pMax = 100.0,
-                              Double_t deltapMin = -1000.0,
-                              Double_t deltapMax = 1000.0,
                               Double_t deltaetaMin = -.1,
                               Double_t deltaetaMax = +.1,
                               Double_t etaMin = -3.4,
                               Double_t etaMax = -2.4,
                               Double_t deltaphiMin = -.2, //-3.15,
-                              Double_t deltaphiMax = .2, //+3.15,
-                              Double_t phiMin = -3.15,
-                              Double_t phiMax = +3.15
+                              Double_t deltaphiMax = .2 //+3.15,
                             ) {
 
 
@@ -437,12 +436,14 @@ TH1Histos[kMFTTrackQ]->SetTitle(Form("nChargeMatch = %d (%.2f%%)", nChargeMatch,
 // Write histograms to file and export images
 for (auto& h : TH2Histos) {
   h->Write();
-  exportHisto(*h);
+  if (EXPORT_HISTOS_IMAGES)
+    exportHisto(*h);
   }
 
 for (auto& h : TH1Histos) {
   h->Write();
-  exportHisto(*h);
+  if (EXPORT_HISTOS_IMAGES)
+    exportHisto(*h);
   }
 outFile.Close();
 
