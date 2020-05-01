@@ -3,6 +3,19 @@
 #include "TTree.h"
 #include <TMath.h>
 #include "CommonConstants/MathConstants.h"
+#include "SimulationDataFormat/MCTrack.h"
+#include "ITSMFTSimulation/Hit.h"
+#include "DataFormatsMFT/TrackMFT.h"
+#include "ITSMFTReconstruction/ChipMappingMFT.h"
+#include <TGeoGlobalMagField.h>
+#include "DataFormatsParameters/GRPObject.h"
+#include "DetectorsBase/Propagator.h"
+#include "Field/MagneticField.h"
+#include <TCanvas.h>
+#include <TH1F.h>
+#include <TH2F.h>
+#include "SimulationDataFormat/MCEventHeader.h"
+#include <TStyle.h>
 
 //constexpr Double_t MFTLayerZ[] = {-45.3, -46.7, -48.6, -50.0, -52.4, -53.8, -67.7, -69.1, -76.1, -77.5};
 using o2::itsmft::Hit;
@@ -53,27 +66,24 @@ void extrapMFTTrackHelixToZ(o2::mft::TrackMFT& track, double zEnd, double Field)
   double phi0 = track.getPhi();
   double cosphi0 = TMath::Cos(phi0);
   double sinphi0 = TMath::Sin(phi0);
-  double tanl0 = track.getTanl();
+  double invtanl0 = 1.0 / track.getTanl();
   double invqpt0 = track.getInvQPt();
 
-  double k = - Field * o2::constants::math::B2C;
-  //double k =  Field * 0.299792458e-3;
-  double deltax = (dZ * cosphi0 / tanl0 - dZ * dZ * k * invqpt0 * sinphi0 / (2. * tanl0 * tanl0));
-  double deltay = (dZ * sinphi0 / tanl0 + dZ * dZ * k * invqpt0 * cosphi0 / (2. * tanl0 * tanl0));
+  double k = 3e-4 * TMath::Abs(Field);
+  double n = dZ * invtanl0;
+  double theta = - invqpt0 * dZ * k * invtanl0;
+  auto Hz = std::copysign(1.0,Field);
+  double deltax = n * cosphi0 - 0.5 * n * theta * Hz * sinphi0;
+  double deltay = n * sinphi0 + 0.5 * n * theta * Hz * cosphi0;
 
   double x = x0 + deltax;
   double y = y0 + deltay;
-  double deltaphi = +dZ * k * invqpt0 / tanl0;
+  double phi = phi0 + theta;
 
-  float phi = phi0 + deltaphi;
-  double tanl = tanl0;
-  double invqpt = invqpt0;
   track.setX(x);
   track.setY(y);
   track.setZ(zEnd);
   track.setPhi(phi);
-  track.setTanl(tanl);
-  track.setInvQPt(invqpt);
 }
 
 //_________________________________________________________________________________________________
@@ -92,9 +102,9 @@ void exportHisto(const H& histo)
 }
 
 //_________________________________________________________________________________________________
-void MFTFitterTrackerChecker( const Char_t *o2sim_KineFile = "o2sim_Kine.root",
+int MFTFitterTrackerChecker( const Char_t *trkFile = "mfttracks.root",
+                              const Char_t *o2sim_KineFile = "o2sim_Kine.root",
                               const Char_t *HitsMFTFile = "o2sim_HitsMFT.root",
-                              const Char_t *trkFile = "mfttracks.root",
                               Double_t pMin = 0.0,
                               Double_t pMax = 100.0,
                               Double_t deltaetaMin = -.1,
@@ -111,28 +121,28 @@ void MFTFitterTrackerChecker( const Char_t *o2sim_KineFile = "o2sim_Kine.root",
   enum TH2HistosCodes {
     kMFTTrackDeltaXYVertex,
     kMFTrackQPRec_MC,
-    kMFTrackQPtResolution,
+    kMFTrackPtResolution,
     kMCTracksEtaZ
   };
 
   std::map<int,const char *> TH2Names {
     {kMFTTrackDeltaXYVertex, "MFT Tracks Vertex at Z = 0"},
     {kMFTrackQPRec_MC, "MFT Track QP FITxMC"},
-    {kMFTrackQPtResolution, "MFT Track QPt Resolution"},
+    {kMFTrackPtResolution, "MFT Track Pt Resolution"},
     {kMCTracksEtaZ, "MCTracks_eta_z"}
   };
 
   std::map<int,const char *> TH2Titles {
     {kMFTTrackDeltaXYVertex, "Standalone MFT Tracks at Z_vertex"},
     {kMFTrackQPRec_MC, "Charged Momentum: Reconstructed vs MC"},
-    {kMFTrackQPtResolution, "Charged Momentum Resolution"},
+    {kMFTrackPtResolution, "Pt Resolution"},
     {kMCTracksEtaZ, "MC Tracks: Pseudorapidity vs zVertex"}
   };
 
   std::map<int, std::array<double,6>> TH2Binning {
     {kMFTTrackDeltaXYVertex, {300, -.05, .05, 300, -.05, .05} },
     {kMFTrackQPRec_MC, {150, -10, 10, 150, -10, 10} },
-    {kMFTrackQPtResolution, {200, 0, 5, 200, -10, 10} },
+    {kMFTrackPtResolution, {200, 0, 5, 200, 0, 15} },
     {kMCTracksEtaZ, {31, -15, 16, 25, etaMin, etaMax} }
   };
 
@@ -140,14 +150,14 @@ void MFTFitterTrackerChecker( const Char_t *o2sim_KineFile = "o2sim_Kine.root",
   std::map<int,const char *> TH2XaxisTitles {
     {kMFTTrackDeltaXYVertex, "\\Delta x ~[cm]"},
     {kMFTrackQPRec_MC, "(q.p)_{MC} [GeV]"},
-    {kMFTrackQPtResolution, "p_{MC} [GeV]"},
+    {kMFTrackPtResolution, "pt_{MC} [GeV]"},
     {kMCTracksEtaZ, "Vertex PosZ [cm]"}
   };
 
   std::map<int,const char *> TH2YaxisTitles {
     {kMFTTrackDeltaXYVertex, "\\Delta y ~[cm]"},
     {kMFTrackQPRec_MC, "(q.p)_{fit} [GeV]"},
-    {kMFTrackQPtResolution, "(q.p_t)_{fit} / (q.p_t)_{MC}"},
+    {kMFTrackPtResolution, "(p_t)_{fit} / (p_t)_{MC}"},
     {kMCTracksEtaZ, "\\eta"}
   };
 
@@ -296,7 +306,11 @@ void MFTFitterTrackerChecker( const Char_t *o2sim_KineFile = "o2sim_Kine.root",
 
   auto field_z = getZField(0, 0, -61.4); // Get field at Center of MFT
 
-  TFile outFile("MFTFitterTrackerCheck.root","RECREATE");
+  //char [100];
+  std::string outfilename = "Fittercheck_" + std::string(trkFile);
+  //strcat(outfilename,trkFile);
+  //strcat(outfilename,"");
+  TFile outFile(outfilename.c_str(),"RECREATE");
 
 
   for (auto event = 0 ; event < numberOfEvents ; event++) { // Resize vector to accomodate found status of all tracks in all events
@@ -408,7 +422,7 @@ void MFTFitterTrackerChecker( const Char_t *o2sim_KineFile = "o2sim_Kine.root",
           TH1Histos[kMFTTrackQ]->Fill(d_Charge);
           TH2Histos[kMFTTrackDeltaXYVertex]->Fill(dx,dy);
           TH2Histos[kMFTrackQPRec_MC]->Fill(P_MC*Q_MC,P_fit*Q_fit);
-          TH2Histos[kMFTrackQPtResolution]->Fill(Pt_MC,Q_MC*Pt_fit/Pt_MC*Q_fit);
+          TH2Histos[kMFTrackPtResolution]->Fill(Pt_MC,Pt_fit/Pt_MC);
 
           TH1Histos[kMCTrackspT]->Fill(Pt_MC);
           TH1Histos[kMCTracksp]->Fill(P_MC);
@@ -484,4 +498,5 @@ std::cout << " Charge_mean = " << TH1Histos[kMFTTrackDeltaY]->GetMean() << std::
 std::cout << " nChargeMatch = " << nChargeMatch << " (" << 100.*nChargeMatch/(nChargeMiss+nChargeMatch) << "%)" << std::endl;
 std::cout << "---------------------------------------------------" << std::endl;
 
+return 0;
 }
