@@ -101,6 +101,54 @@ void exportHisto(const H& histo)
    for (std::string type: {".pdf", ".png"}) c->Print((imgpath+std::string(h->GetName()) + type).c_str());
 }
 
+
+//_________________________________________________________________________________________________
+template <typename H>
+void FitSlicesy(const H& histo1, const H& histo2)
+{
+// ## FitSlicesy
+H *h1 = new H(histo1);
+H *h2 = new H(histo2);
+
+h1->FitSlicesY(0,0,-1,10);
+// Create a canvas and divide it
+auto CanvasName = std::string(h1->GetName()) + std::string("FitSlicesY");
+TCanvas *c1 = new TCanvas(CanvasName.c_str(),CanvasName.c_str(),700,500);
+c1->Divide(2,1);
+TPad *leftPad = (TPad*)c1->cd(1);;
+leftPad->Divide(1,2);
+
+// Draw 2-d original histogram histo1
+leftPad->cd(1);
+gPad->SetTopMargin(0.12);
+h1->Draw();
+
+// Draw histo2
+leftPad->cd(2);
+h2->Draw();
+TPad *rightPad = (TPad*)c1->cd(2);
+rightPad->Divide(1,2);
+rightPad->cd(1);
+TH2F *h1_Fit1 = (TH2F*)gDirectory->Get((std::string(h1->GetName()) + std::string("_1")).c_str());
+h1_Fit1->Draw();
+
+// Show fitted "sigma" for each slice
+rightPad->cd(2);
+gPad->SetTopMargin(0.12);
+gPad->SetLeftMargin(0.15);
+TH2F *h1_Fit2 = (TH2F*)gDirectory->Get((std::string(h1->GetName()) + std::string("_2")).c_str());
+h1_Fit2->Draw();
+
+
+//h2_InvPtResolution_0->Write();
+h1_Fit1->Write();
+h1_Fit2->Write();
+c1->Write();
+}
+
+
+
+
 //_________________________________________________________________________________________________
 int MFTFitterTrackerChecker( const Char_t *trkFile = "mfttracks.root",
                               const Char_t *o2sim_KineFile = "o2sim_Kine.root",
@@ -122,6 +170,7 @@ int MFTFitterTrackerChecker( const Char_t *trkFile = "mfttracks.root",
     kMFTTrackDeltaXYVertex,
     kMFTrackQPRec_MC,
     kMFTrackPtResolution,
+    kMFTrackInvPtResolution,
     kMCTracksEtaZ
   };
 
@@ -129,6 +178,7 @@ int MFTFitterTrackerChecker( const Char_t *trkFile = "mfttracks.root",
     {kMFTTrackDeltaXYVertex, "MFT Tracks Vertex at Z = 0"},
     {kMFTrackQPRec_MC, "MFT Track QP FITxMC"},
     {kMFTrackPtResolution, "MFT Track Pt Resolution"},
+    {kMFTrackInvPtResolution, "MFT Track InvPt Resolution"},
     {kMCTracksEtaZ, "MCTracks_eta_z"}
   };
 
@@ -136,13 +186,15 @@ int MFTFitterTrackerChecker( const Char_t *trkFile = "mfttracks.root",
     {kMFTTrackDeltaXYVertex, "Standalone MFT Tracks at Z_vertex"},
     {kMFTrackQPRec_MC, "Charged Momentum: Reconstructed vs MC"},
     {kMFTrackPtResolution, "Pt Resolution"},
+    {kMFTrackInvPtResolution, "InvPt Resolution"},
     {kMCTracksEtaZ, "MC Tracks: Pseudorapidity vs zVertex"}
   };
 
   std::map<int, std::array<double,6>> TH2Binning {
     {kMFTTrackDeltaXYVertex, {300, -.05, .05, 300, -.05, .05} },
-    {kMFTrackQPRec_MC, {150, -10, 10, 150, -10, 10} },
-    {kMFTrackPtResolution, {200, 0, 5, 200, 0, 15} },
+    {kMFTrackQPRec_MC, {100, -10, 10, 100, -10, 10} },
+    {kMFTrackPtResolution, {100, 0, 5, 100, 0, 15} },
+    {kMFTrackInvPtResolution, {100, 0, 5, 100, -15, 15} },
     {kMCTracksEtaZ, {31, -15, 16, 25, etaMin, etaMax} }
   };
 
@@ -151,6 +203,7 @@ int MFTFitterTrackerChecker( const Char_t *trkFile = "mfttracks.root",
     {kMFTTrackDeltaXYVertex, "\\Delta x ~[cm]"},
     {kMFTrackQPRec_MC, "(q.p)_{MC} [GeV]"},
     {kMFTrackPtResolution, "pt_{MC} [GeV]"},
+    {kMFTrackInvPtResolution, "pt_{MC} [GeV]"},
     {kMCTracksEtaZ, "Vertex PosZ [cm]"}
   };
 
@@ -158,6 +211,7 @@ int MFTFitterTrackerChecker( const Char_t *trkFile = "mfttracks.root",
     {kMFTTrackDeltaXYVertex, "\\Delta y ~[cm]"},
     {kMFTrackQPRec_MC, "(q.p)_{fit} [GeV]"},
     {kMFTrackPtResolution, "(p_t)_{fit} / (p_t)_{MC}"},
+    {kMFTrackInvPtResolution, "(1/(p_t)_{fit} - 1/(p_t)_{MC})*(p_t)_{MC}"},
     {kMCTracksEtaZ, "\\eta"}
   };
 
@@ -423,6 +477,8 @@ int MFTFitterTrackerChecker( const Char_t *trkFile = "mfttracks.root",
           TH2Histos[kMFTTrackDeltaXYVertex]->Fill(dx,dy);
           TH2Histos[kMFTrackQPRec_MC]->Fill(P_MC*Q_MC,P_fit*Q_fit);
           TH2Histos[kMFTrackPtResolution]->Fill(Pt_MC,Pt_fit/Pt_MC);
+          TH2Histos[kMFTrackInvPtResolution]->Fill(Pt_MC,(1.0/Pt_fit-1.0/Pt_MC)*Pt_MC);
+
 
           TH1Histos[kMCTrackspT]->Fill(Pt_MC);
           TH1Histos[kMCTracksp]->Fill(P_MC);
@@ -446,6 +502,11 @@ gStyle->SetStatW(.38);
 gStyle->SetStatH(.26);
 
 TH1Histos[kMFTTrackQ]->SetTitle(Form("nChargeMatch = %d (%.2f%%)", nChargeMatch, 100.*nChargeMatch/(nChargeMiss+nChargeMatch)));
+
+//Fit Slices: Pt resolution
+FitSlicesy(*TH2Histos[kMFTrackInvPtResolution],*TH2Histos[kMFTrackQPRec_MC]);
+FitSlicesy(*TH2Histos[kMFTrackPtResolution],*TH2Histos[kMFTrackQPRec_MC]);
+
 
 // Write histograms to file and export images
 for (auto& h : TH2Histos) {
