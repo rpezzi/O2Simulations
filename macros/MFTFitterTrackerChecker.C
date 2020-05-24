@@ -26,6 +26,7 @@ using o2::MCTrackT;
 using o2::mft::TrackMFT;
 o2::itsmft::ChipMappingMFT mftChipMapper;
 using eventFoundTracks = std::vector<bool>;
+using std::vector;
 vector<eventFoundTracks> allFoundTracksMFT; // True for reconstructed tracks - one vector of bool per event
 
 using trackHasHitsinMFTDisks = std::array<bool,5>; // Disks with hits from a MFT track
@@ -786,6 +787,12 @@ TH1Histos[kMFTTrackQ]->SetStats(0);
 FitSlicesy(*TH2Histos[kMFTrackInvPtResolution],*TH2Histos[kMFTrackQPRec_MC]);
 FitSlicesy(*TH2Histos[kMFTrackPtResolution],*TH2Histos[kMFTrackQPRec_MC]);
 
+
+// sigmaX resultion Profile
+TH1D* DeltaX_Error = new  TH1D();
+DeltaX_Error =  DeltaX_Profile->ProjectionX("DeltaX_Error", "C=E");
+DeltaX_Error->Write();
+
 // Summary Canvases
 auto pt_resolution = summary_report(*TH2Histos[kMFTrackPtResolution],
            *TH2Histos[kMFTrackQPRec_MC],
@@ -795,6 +802,8 @@ auto pt_resolution = summary_report(*TH2Histos[kMFTrackPtResolution],
 
 //
 
+
+
 auto invpt_resolution = summary_report(*TH2Histos[kMFTrackInvPtResolution],
            *TH2Histos[kMFTrackQPRec_MC],
            *(TH1F*)gDirectory->Get((std::string(TH2Histos[kMFTrackInvPtResolution]->GetName()) + std::string("_1")).c_str()),
@@ -803,7 +812,7 @@ auto invpt_resolution = summary_report(*TH2Histos[kMFTrackInvPtResolution],
 
 auto vertexing_resolution = summary_report(*TH2Histos[kMFTTrackDeltaXYVertex],
            *TH1Histos[kMFTTrackDeltaX],
-           *TH1Histos[kMFTTrackDeltaEta],
+           *DeltaX_Error,
            *TH1Histos[kMFTTrackDeltaPhiDeg],
            "Vertexing Summary", seed_cfg );
 
@@ -827,10 +836,7 @@ auto vertexing_resolution4plus = summary_report(*TH2Histos[kMFTTrackDeltaXYVerte
            "Vertexing Summary p_t > 4", seed_cfg );
 
 
-// sigmaX resultion Profile
-TH1D* DeltaX_Error = new  TH1D();
-DeltaX_Error =  DeltaX_Profile->ProjectionX("DeltaX_Error", "C=E");
-DeltaX_Error->Write();
+
 
 // Write histograms to file and export images
 

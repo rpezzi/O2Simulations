@@ -21,7 +21,7 @@ void exportHisto(const H& histo)
    H *h = new H(histo);
    h->Draw();
    gSystem->ProcessEvents();
-   for (std::string type: {".pdf", ".png"}) c->Print((imgpath+std::string(h->GetName()) + type).c_str());
+   for (std::string type: {".png"}) c->Print((imgpath+std::string(h->GetName()) + type).c_str());
 }
 
 
