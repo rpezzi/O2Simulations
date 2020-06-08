@@ -116,6 +116,7 @@ int ExportCanvas( const Char_t *inFileName,
  //canvas->UseCurrentStyle();
  gSystem->ProcessEvents();
  canvas->Update();
- for (std::string type: {".pdf", ".png", ".svg"}) canvas->Print((std::string(canvasName) + std::string(export_name) + type).c_str());
+ //for (std::string type: {".pdf", ".png", ".svg"}) canvas->Print((std::string(canvasName) + std::string(export_name) + type).c_str());
+ for (std::string type: {".png"}) canvas->Print((std::string(canvasName) + std::string(export_name) + type).c_str());
  return 0;
 }

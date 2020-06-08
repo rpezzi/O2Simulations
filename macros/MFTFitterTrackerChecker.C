@@ -2,6 +2,7 @@
 #include "TFile.h"
 #include "TTree.h"
 #include "TLatex.h"
+#include "TEfficiency.h"
 #include <TMath.h>
 #include "CommonConstants/MathConstants.h"
 #include "SimulationDataFormat/MCTrack.h"
@@ -386,6 +387,9 @@ int MFTFitterTrackerChecker( const Char_t *trkFile = "mfttracks.root",
     kMFTTrackDeltaEta1_4,
     kMFTTrackDeltaEta4plus,
     kMFTTrackDeltaPhi,
+    kMFTTrackDeltaPhi0_1,
+    kMFTTrackDeltaPhi1_4,
+    kMFTTrackDeltaPhi4plus,
     kMFTTrackDeltaPhiDeg,
     kMFTTrackDeltaPhiDeg0_1,
     kMFTTrackDeltaPhiDeg1_4,
@@ -416,6 +420,9 @@ int MFTFitterTrackerChecker( const Char_t *trkFile = "mfttracks.root",
     {kMFTTrackDeltaEta1_4, "MFT Tracks eta (1 < pt < 4)"},
     {kMFTTrackDeltaEta4plus, "MFT Tracks eta (pt > 4)"},
     {kMFTTrackDeltaPhi, "MFT Tracks Fitted Phi at Vertex"},
+    {kMFTTrackDeltaPhi0_1,"MFT Tracks Fitted Phi at Vertex [rad] (pt < 1)"},
+    {kMFTTrackDeltaPhi1_4,"MFT Tracks Fitted Phi at Vertex [rad] (1 < pt < 4)"},
+    {kMFTTrackDeltaPhi4plus,"MFT Tracks Fitted Phi at Vertex [rad] (pt > 4)"},
     {kMFTTrackDeltaPhiDeg,"MFT Tracks Fitted Phi at Vertex [deg]"},
     {kMFTTrackDeltaPhiDeg0_1,"MFT Tracks Fitted Phi at Vertex [deg] (pt < 1)"},
     {kMFTTrackDeltaPhiDeg1_4,"MFT Tracks Fitted Phi at Vertex [deg] (1 < pt < 4)"},
@@ -444,6 +451,9 @@ int MFTFitterTrackerChecker( const Char_t *trkFile = "mfttracks.root",
     {kMFTTrackDeltaEta1_4, "\\eta_{Fit} - \\eta_{MC} "},
     {kMFTTrackDeltaEta4plus, "\\eta_{Fit} - \\eta_{MC} "},
     {kMFTTrackDeltaPhi, "\\phi _{Fit} - \\phi_{MC}"},
+    {kMFTTrackDeltaPhi0_1, "\\phi _{Fit} - \\phi_{MC}"},
+    {kMFTTrackDeltaPhi1_4, "\\phi _{Fit} - \\phi_{MC}"},
+    {kMFTTrackDeltaPhi4plus, "\\phi _{Fit} - \\phi_{MC}"},
     {kMFTTrackDeltaPhiDeg, "\\phi _{Fit} - \\phi_{MC}"},
     {kMFTTrackDeltaPhiDeg0_1, "\\phi _{Fit} - \\phi_{MC}"},
     {kMFTTrackDeltaPhiDeg1_4, "\\phi _{Fit} - \\phi_{MC}"},
@@ -472,6 +482,9 @@ int MFTFitterTrackerChecker( const Char_t *trkFile = "mfttracks.root",
     {kMFTTrackDeltaEta1_4, {1000, deltaetaMin, deltaetaMax}},
     {kMFTTrackDeltaEta4plus, {1000, deltaetaMin, deltaetaMax}},
     {kMFTTrackDeltaPhi, {1000, deltaphiMin, deltaphiMax}},
+    {kMFTTrackDeltaPhi0_1, {1000, deltaphiMin, deltaphiMax}},
+    {kMFTTrackDeltaPhi1_4, {1000, deltaphiMin, deltaphiMax}},
+    {kMFTTrackDeltaPhi4plus, {1000, deltaphiMin, deltaphiMax}},
     {kMFTTrackDeltaPhiDeg, {1000, TMath::RadToDeg()*deltaphiMin, TMath::RadToDeg()*deltaphiMax}},
     {kMFTTrackDeltaPhiDeg0_1, {1000, TMath::RadToDeg()*deltaphiMin, TMath::RadToDeg()*deltaphiMax}},
     {kMFTTrackDeltaPhiDeg1_4, {1000, TMath::RadToDeg()*deltaphiMin, TMath::RadToDeg()*deltaphiMax}},
@@ -500,6 +513,9 @@ int MFTFitterTrackerChecker( const Char_t *trkFile = "mfttracks.root",
     {kMFTTrackDeltaEta1_4, "\\Delta \\eta"},
     {kMFTTrackDeltaEta4plus, "\\Delta \\eta"},
     {kMFTTrackDeltaPhi, "\\Delta \\phi ~[rad]"},
+    {kMFTTrackDeltaPhi0_1, "\\Delta \\phi ~[rad]"},
+    {kMFTTrackDeltaPhi1_4, "\\Delta \\phi ~[rad]"},
+    {kMFTTrackDeltaPhi4plus, "\\Delta \\phi ~[rad]"},
     {kMFTTrackDeltaPhiDeg, "\\Delta \\phi ~[deg]"},
     {kMFTTrackDeltaPhiDeg0_1, "\\Delta \\phi ~[deg]"},
     {kMFTTrackDeltaPhiDeg1_4, "\\Delta \\phi ~[deg]"},
@@ -520,16 +536,7 @@ int MFTFitterTrackerChecker( const Char_t *trkFile = "mfttracks.root",
   };
 
 
-  // A profile histograms
-  auto PtRes_Profile  = new TProfile("Pt_res_prof","Profile of pt{fit}/pt{MC}",14,0,7,0,20, "s");
-  PtRes_Profile->GetXaxis()->SetTitle("pt_{MC}");
-  PtRes_Profile->GetYaxis()->SetTitle("mean(Pt_{Fit}/Pt_{MC})");
-
-  auto DeltaX_Profile  = new TProfile("DeltaX_prof","Vertexing resolution",14,0,7,-10000.,10000., "s");
-  DeltaX_Profile->GetXaxis()->SetTitle("pt_{MC} [GeV]");
-  DeltaX_Profile->GetYaxis()->SetTitle("\\sigma_x ~[\\mu m]");
-
-
+ 
   //Create histograms
   const int nTH1Histos = TH1Names.size();
   std::vector<std::unique_ptr<TH1F>> TH1Histos(nTH1Histos);
@@ -557,6 +564,23 @@ int MFTFitterTrackerChecker( const Char_t *trkFile = "mfttracks.root",
     ++n2Histo;
     }
 
+  // Profiles histograms
+  auto PtRes_Profile  = new TProfile("Pt_res_prof","Profile of pt{fit}/pt{MC}",14,0,7,0,20, "s");
+  PtRes_Profile->GetXaxis()->SetTitle("pt_{MC}");
+  PtRes_Profile->GetYaxis()->SetTitle("mean(Pt_{Fit}/Pt_{MC})");
+
+  auto DeltaX_Profile  = new TProfile("DeltaX_prof","Vertexing resolution",14,0,7,-10000.,10000., "s");
+  DeltaX_Profile->GetXaxis()->SetTitle("pt_{MC} [GeV]");
+  DeltaX_Profile->GetYaxis()->SetTitle("\\sigma_x ~[\\mu m]");
+
+  // TEfficiency histogram
+  TEfficiency* qMatchEff = new TEfficiency("QMatchEff","Charge Match;p_t [GeV];#epsilon",10,0,10);
+  //qMatchEff->GetPaintedHistogram()->GetXaxis()->SetLabelSize(0.06);
+  //qMatchEff->GetPaintedHistogram()->GetYaxis()->SetLabelSize(0.06);
+  //qMatchEff->GetPaintedHistogram()->GetXaxis()->SetTitleSize(0.06);
+  //qMatchEff->GetPaintedHistogram()->GetYaxis()->SetTitleSize(0.06);
+
+  // Counters
   Int_t nChargeMatch = 0;
   Int_t nChargeMiss = 0;
   Int_t nChargeMatch0_1 = 0;
@@ -565,7 +589,11 @@ int MFTFitterTrackerChecker( const Char_t *trkFile = "mfttracks.root",
   Int_t nChargeMiss1_4 = 0;
   Int_t nChargeMatch4plus = 0;
   Int_t nChargeMiss4plus = 0;
+  Int_t nCleanTracksMFT = 0, nInvalidTracksMFT = 0, nMFTTrackable = 0;
 
+
+
+  // Files & Trees
   // MC
   TFile *o2sim_KineFileIn = new TFile(o2sim_KineFile);
   TTree *o2SimKineTree = (TTree*) o2sim_KineFileIn -> Get("o2sim");
@@ -590,15 +618,11 @@ int MFTFitterTrackerChecker( const Char_t *trkFile = "mfttracks.root",
     return -1;
   }
 
-
-
   // MFT Tracks
   TFile *trkFileIn = new TFile(trkFile);
   TTree *mftTrackTree = (TTree*) trkFileIn -> Get("o2sim");
   std::vector<o2::mft::TrackMFT> trackMFTVec, *trackMFTVecP = &trackMFTVec;
   mftTrackTree->SetBranchAddress("MFTTrack", &trackMFTVecP);
-
-  Int_t nCleanTracksMFT = 0, nInvalidTracksMFT = 0, nMFTTrackable = 0;
 
   mftTrackTree -> GetEntry(0);
   o2SimKineTree -> GetEntry(0);
@@ -737,6 +761,7 @@ int MFTFitterTrackerChecker( const Char_t *trkFile = "mfttracks.root",
           if (Pt_MC <= 1.0) {
                TH2Histos[kMFTTrackDeltaXYVertex0_1]->Fill(dx,dy);
                TH1Histos[kMFTTrackDeltaEta0_1]->Fill(d_eta);
+               TH1Histos[kMFTTrackDeltaPhi0_1]->Fill(d_Phi);
                TH1Histos[kMFTTrackDeltaPhiDeg0_1]->Fill(TMath::RadToDeg()*d_Phi);
                TH1Histos[kMFTTrackDeltaX0_1]->Fill(dx);
                TH1Histos[kMFTTrackQ0_1]->Fill(d_Charge);
@@ -745,6 +770,7 @@ int MFTFitterTrackerChecker( const Char_t *trkFile = "mfttracks.root",
           if (Pt_MC > 1.0 and Pt_MC <= 4 ) {
                TH2Histos[kMFTTrackDeltaXYVertex1_4]->Fill(dx,dy);
                TH1Histos[kMFTTrackDeltaEta1_4]->Fill(d_eta);
+               TH1Histos[kMFTTrackDeltaPhi1_4]->Fill(d_Phi);
                TH1Histos[kMFTTrackDeltaPhiDeg1_4]->Fill(TMath::RadToDeg()*d_Phi);
                TH1Histos[kMFTTrackDeltaX1_4]->Fill(dx);
                TH1Histos[kMFTTrackQ1_4]->Fill(d_Charge);
@@ -753,6 +779,7 @@ int MFTFitterTrackerChecker( const Char_t *trkFile = "mfttracks.root",
           if (Pt_MC > 4.0) {
              TH2Histos[kMFTTrackDeltaXYVertex4plus]->Fill(dx,dy);
              TH1Histos[kMFTTrackDeltaEta4plus]->Fill(d_eta);
+             TH1Histos[kMFTTrackDeltaPhi4plus]->Fill(d_Phi);
              TH1Histos[kMFTTrackDeltaPhiDeg4plus]->Fill(TMath::RadToDeg()*d_Phi);
              TH1Histos[kMFTTrackDeltaX4plus]->Fill(dx);
              TH1Histos[kMFTTrackQ4plus]->Fill(d_Charge);
@@ -760,6 +787,7 @@ int MFTFitterTrackerChecker( const Char_t *trkFile = "mfttracks.root",
            }
 
            d_Charge ? nChargeMiss++ : nChargeMatch++;
+	   qMatchEff->Fill(!d_Charge,Pt_MC);
           }
 
         }
@@ -771,6 +799,8 @@ TH1Histos[kMFTTrackQ]->SetTitle(Form("nChargeMatch = %d (%.2f%%)", nChargeMatch,
 TH1Histos[kMFTTrackQ0_1]->SetTitle(Form("nChargeMatch = %d (%.2f%%)", nChargeMatch0_1, 100.*nChargeMatch0_1/(nChargeMiss0_1+nChargeMatch0_1)));
 TH1Histos[kMFTTrackQ1_4]->SetTitle(Form("nChargeMatch = %d (%.2f%%)", nChargeMatch1_4, 100.*nChargeMatch1_4/(nChargeMiss1_4+nChargeMatch1_4)));
 TH1Histos[kMFTTrackQ4plus]->SetTitle(Form("nChargeMatch = %d (%.2f%%)", nChargeMatch4plus, 100.*nChargeMatch4plus/(nChargeMiss4plus+nChargeMatch4plus)));
+
+qMatchEff->SetTitle(Form("Charge match = %.2f%%", 100.*nChargeMatch/(nChargeMiss+nChargeMatch)));
 
 
 //Remove stat boxes
@@ -797,7 +827,7 @@ DeltaX_Error->Write();
 auto pt_resolution = summary_report(*TH2Histos[kMFTrackPtResolution],
            *TH2Histos[kMFTrackQPRec_MC],
            *PtRes_Profile,
-           *TH1Histos[kMFTTrackQ],
+           *qMatchEff,
            "Pt Summary", seed_cfg );
 
 //
@@ -855,6 +885,7 @@ for (auto& h : TH1Histos) {
 
 PtRes_Profile->Write();
 DeltaX_Profile->Write();
+qMatchEff->Write(); 
 outFile.Close();
 
 
@@ -874,25 +905,37 @@ std::cout << "-------------   Fitting Summary   -----------------" << std::endl;
 std::cout << "---------------------------------------------------" << std::endl;
 std::cout << " P_mean = " << TH1Histos[kMFTTracksP]->GetMean() << std::endl;
 std::cout << " P_StdDev = " << TH1Histos[kMFTTracksP]->GetStdDev() << std::endl;
-//std::cout << " P_Res_mean = " << TH1Histos[kMFTTracksP_res]->GetMean() << std::endl;
-//std::cout << " P_Res_StdDev = " << TH1Histos[kMFTTracksP_res]->GetStdDev() << std::endl;
-//std::cout << " Pt_Res_mean = " << TH1Histos[kMFTTracksPt_res]->GetMean() << std::endl;
-//std::cout << " Pt_Res_StdDev = " << TH1Histos[kMFTTracksPt_res]->GetStdDev() << std::endl;
 std::cout << " Eta_mean = " << TH1Histos[kMFTTrackDeltaEta]->GetMean() << std::endl;
 std::cout << " Eta_StdDev = " << TH1Histos[kMFTTrackDeltaEta]->GetStdDev() << std::endl;
+std::cout << " Eta_StdDev(pt<1) = " << TH1Histos[kMFTTrackDeltaEta0_1]->GetStdDev() << std::endl;
+std::cout << " Eta_StdDev(1<pt<4) = " << TH1Histos[kMFTTrackDeltaEta1_4]->GetStdDev() << std::endl;
+std::cout << " Eta_StdDev(pt>4) = " << TH1Histos[kMFTTrackDeltaEta4plus]->GetStdDev() << std::endl;
 std::cout << " Phi_mean = " << TH1Histos[kMFTTrackDeltaPhi]->GetMean() << std::endl;
 std::cout << " Phi_StdDev = " << TH1Histos[kMFTTrackDeltaPhi]->GetStdDev() << std::endl;
-std::cout << " Phi_mean = " << TH1Histos[kMFTTrackDeltaPhiDeg]->GetMean() << std::endl;
-std::cout << " Phi_StdDev = " << TH1Histos[kMFTTrackDeltaPhiDeg]->GetStdDev() << std::endl;
+std::cout << " Phi_StdDev(pt<1) = " << TH1Histos[kMFTTrackDeltaPhi0_1]->GetStdDev() << std::endl;
+std::cout << " Phi_StdDev(1<pt<4) = " << TH1Histos[kMFTTrackDeltaPhi1_4]->GetStdDev() << std::endl;
+std::cout << " Phi_StdDev(pt>4) = " << TH1Histos[kMFTTrackDeltaPhi4plus]->GetStdDev() << std::endl;
+std::cout << " Phi_meanDeg = " << TH1Histos[kMFTTrackDeltaPhiDeg]->GetMean() << std::endl;
+std::cout << " Phi_StdDevDeg = " << TH1Histos[kMFTTrackDeltaPhiDeg]->GetStdDev() << std::endl;
+std::cout << " Phi_StdDevDeg(pt<1) = " << TH1Histos[kMFTTrackDeltaPhiDeg0_1]->GetStdDev() << std::endl;
+std::cout << " Phi_StdDevDeg(1<pt<4) = " << TH1Histos[kMFTTrackDeltaPhiDeg1_4]->GetStdDev() << std::endl;
+std::cout << " Phi_StdDevDeg(pt>4) = " << TH1Histos[kMFTTrackDeltaPhiDeg4plus]->GetStdDev() << std::endl;
 std::cout << " DeltaX_mean = " << TH1Histos[kMFTTrackDeltaX]->GetMean() << std::endl;
 std::cout << " DeltaX_StdDev = " << TH1Histos[kMFTTrackDeltaX]->GetStdDev() << std::endl;
+std::cout << " DeltaX_StdDev(pt<1) = " << TH1Histos[kMFTTrackDeltaX0_1]->GetStdDev() << std::endl;
+std::cout << " DeltaX_StdDev(1<pt<4) = " << TH1Histos[kMFTTrackDeltaX1_4]->GetStdDev() << std::endl;
+std::cout << " DeltaX_StdDev(pt>4) = " << TH1Histos[kMFTTrackDeltaX4plus]->GetStdDev() << std::endl;
 std::cout << " DeltaY_mean = " << TH1Histos[kMFTTrackDeltaY]->GetMean() << std::endl;
 std::cout << " DeltaY_StdDev = " << TH1Histos[kMFTTrackDeltaY]->GetStdDev() << std::endl;
 std::cout << " R_mean = " << TH1Histos[kMFTTrackR]->GetMean() << std::endl;
 std::cout << " R_StdDev = " << TH1Histos[kMFTTrackR]->GetStdDev() << std::endl;
 std::cout << " Charge_mean = " << TH1Histos[kMFTTrackDeltaY]->GetMean() << std::endl;
 std::cout << " nChargeMatch = " << nChargeMatch << " (" << 100.*nChargeMatch/(nChargeMiss+nChargeMatch) << "%)" << std::endl;
-std::cout << "---------------------------------------------------" << std::endl;
+std::cout << "---------------------------------------------------" << std::endl; 
 
 return 0;
 }
+
+
+
+
