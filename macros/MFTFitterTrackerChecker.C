@@ -68,22 +68,23 @@ void extrapMFTTrackHelixToZ(o2::mft::TrackMFT& track, double zEnd, double Field)
   double dZ = (zEnd - track.getZ());
   double x0 = track.getX();
   double y0 = track.getY();
-  double phi0 = track.getPhi();
-  double cosphi0 = TMath::Cos(phi0);
-  double sinphi0 = TMath::Sin(phi0);
-  double invtanl0 = 1.0 / track.getTanl();
+  double px0 = track.getPx();
+  double py0 = track.getPy();
+  double invtanl0 = 1.0 / track.getTanl();;
   double invqpt0 = track.getInvQPt();
-
-  double k = 3e-4 * TMath::Abs(Field);
-  double n = dZ * invtanl0;
-  double theta = - invqpt0 * dZ * k * invtanl0;
-  auto Hz = std::copysign(1.0,Field);
-  double deltax = n * cosphi0 - 0.5 * n * theta * Hz * sinphi0;
-  double deltay = n * sinphi0 + 0.5 * n * theta * Hz * cosphi0;
+  auto q = track.getCharge();
+  auto Hz =  std::copysign(1, Field); 
+  double k = TMath::Abs(3e-4 * Field);
+  auto invk = 1.0 / k;
+  double theta = -invqpt0 * dZ * k * invtanl0;
+  double costheta, sintheta;
+  o2::utils::sincos(theta, sintheta, costheta);
+  double deltax = Hz * py0 * invk * (1.0 - costheta) - px0 * q * invk * sintheta;
+  double deltay = -Hz * px0 * invk * (1.0 - costheta) - py0 * q * invk * sintheta;
 
   double x = x0 + deltax;
   double y = y0 + deltay;
-  double phi = phi0 + theta;
+  double phi = track.getPhi() + Hz * theta;
 
   track.setX(x);
   track.setY(y);
@@ -167,7 +168,20 @@ c1->Write();
 
 //_________________________________________________________________________________________________
 template <typename H1, typename H2, typename H3, typename H4>
-TCanvas summary_report( H1& histo1,  H2& histo2,  H3& histo3,  H4& histo4, std::string CanvasName, std::string tlt="Summary")
+TCanvas summary_report( H1& histo1,
+			H2& histo2,
+			H3& histo3,
+			H4& histo4,
+			std::string CanvasName,
+			std::string tlt="Summary",
+			int h1log=0,
+			int h2log=0,
+			int h3log=0,
+			int h4log=0,
+			std::string h1_foot="",
+			std::string h2_foot="",
+			std::string h3_foot="",
+			std::string h4_foot="")
 {
 H1 *h1 = &histo1;
 H2 *h2 = &histo2;
@@ -194,28 +208,45 @@ leftPad->SetPad(0.000,0.000,0.5,.96);
 leftPad->Divide(1,2);
 
 leftPad->cd(1);
+
 gPad->SetBottomMargin(0.15);
 gPad->SetRightMargin(0.15);
+gPad->SetLogy(h1log);
 
+ 
 h1->Draw();
 h1->SetMarkerColor(4);
 h1->SetMarkerStyle(21);
-h1->SetMarkerSize(1);
+h1->SetMarkerSize(1); 
 //h1->GetXaxis()->SetLabelSize(0.06);
 //h1->GetXaxis()->SetTitleSize(0.05);
 //h1->GetYaxis()->SetLabelSize(0.06);
 //h1->GetYaxis()->SetTitleSize(0.05);
+TLatex *h1_entries = new TLatex() ;
+h1_entries->SetNDC();
+h1_entries->SetTextSize(0.035);
+h1_entries->SetTextAlign(23);
+h1_entries->DrawLatex(.08 ,.08, h1_foot.c_str()) ;
+h1_entries->Draw();
+
 
 
 leftPad->cd(2);
 gPad->SetBottomMargin(0.15);
 gPad->SetTopMargin(0.10);
+gPad->SetLogy(h2log);
 
 
 h2->Draw();
 h2->SetMarkerColor(4);
 h2->SetMarkerStyle(21);
 h2->SetMarkerSize(1);
+TLatex *h2_entries = new TLatex() ;
+h2_entries->SetNDC();
+h2_entries->SetTextSize(0.035);
+h2_entries->SetTextAlign(23);
+h2_entries->DrawLatex(.08 ,.08, h2_foot.c_str()) ;
+h2_entries->Draw();
 
 
 TPad *rightPad = (TPad*)c1->cd(2);
@@ -224,19 +255,35 @@ rightPad->Divide(1,2);
 rightPad->cd(1);
 gPad->SetBottomMargin(0.15);
 gPad->SetTopMargin(0.10);
+gPad->SetLogy(h3log);
 
 h3->Draw();
 h3->SetMarkerColor(4);
 h3->SetMarkerStyle(21);
 h3->SetMarkerSize(1);
+TLatex *h3_entries = new TLatex() ;
+h3_entries->SetNDC();
+h3_entries->SetTextSize(0.035);
+h3_entries->SetTextAlign(23);
+h3_entries->DrawLatex(.08 ,.08, h3_foot.c_str()) ;
+h3_entries->Draw();
 
 rightPad->cd(2);
 gPad->SetBottomMargin(0.15);
+gPad->SetLogy(h4log);
 
+
+ 
 h4->Draw();
 h4->SetMarkerColor(4);
 h4->SetMarkerStyle(21);
 h4->SetMarkerSize(1);
+TLatex *h4_entries = new TLatex() ;
+h4_entries->SetNDC();
+h4_entries->SetTextSize(0.035);
+h4_entries->SetTextAlign(23);
+h4_entries->DrawLatex(.08 ,.08, h4_foot.c_str()) ;
+h4_entries->Draw();
 
 c1->cd();
 
@@ -694,9 +741,10 @@ int MFTFitterTrackerChecker( const Char_t *trkFile = "mfttracks.root",
 
   if( (thisTrkID >= 0 & thisTrkID != 0x7FFFFFF) & (eventID <= numberOfEvents) )
       if(allFoundTracksMFT[eventID][thisTrkID] == true) {
-        o2SimKineTree -> GetEntry(eventID);
+	o2SimKineTree -> GetEntry(eventID);
         MCTrackT<float>* thisTrack =  &(*mcTr).at(thisTrkID);
-        if (thisTrack->getMotherTrackId() == -1) { // Only primaries
+	//std::cout << " MotherID = " << thisTrack->getMotherTrackId() << std::endl; 
+	// if (thisTrack->getMotherTrackId() == -1) { // Only primaries
           auto vx_MC = thisTrack->GetStartVertexCoordinatesX();
           auto vy_MC = thisTrack->GetStartVertexCoordinatesY();
           auto vz_MC = thisTrack->GetStartVertexCoordinatesZ();
@@ -788,7 +836,7 @@ int MFTFitterTrackerChecker( const Char_t *trkFile = "mfttracks.root",
 
            d_Charge ? nChargeMiss++ : nChargeMatch++;
 	   qMatchEff->Fill(!d_Charge,Pt_MC);
-          }
+	   //      }
 
         }
   } // Loop on TracksMFT
@@ -825,48 +873,83 @@ DeltaX_Error->Write();
 
 // Summary Canvases
 auto pt_resolution = summary_report(*TH2Histos[kMFTrackPtResolution],
-           *TH2Histos[kMFTrackQPRec_MC],
-           *PtRes_Profile,
-           *qMatchEff,
-           "Pt Summary", seed_cfg );
-
-//
-
-
-
+				    *TH2Histos[kMFTrackQPRec_MC],
+				    *PtRes_Profile,
+				    *qMatchEff,
+				    "Pt Summary",
+				    seed_cfg,
+				    0, 0, 0, 0,
+				    Form("%.2f%%", 100.0*TH2Histos[kMFTrackPtResolution]->Integral()/TH2Histos[kMFTrackPtResolution]->GetEntries()),
+				    Form("%.2f%%", 100.0*TH2Histos[kMFTrackQPRec_MC]->Integral()/TH2Histos[kMFTrackQPRec_MC]->GetEntries())
+				    );
+auto errcnt = 0;
+std::cout << errcnt++ << std::endl;
 auto invpt_resolution = summary_report(*TH2Histos[kMFTrackInvPtResolution],
-           *TH2Histos[kMFTrackQPRec_MC],
-           *(TH1F*)gDirectory->Get((std::string(TH2Histos[kMFTrackInvPtResolution]->GetName()) + std::string("_1")).c_str()),
-           *(TH1F*)gDirectory->Get((std::string(TH2Histos[kMFTrackInvPtResolution]->GetName()) + std::string("_2")).c_str()),
-           "InvPt Summary", seed_cfg );
+				       *TH2Histos[kMFTrackQPRec_MC],
+				       *(TH1F*)gDirectory->Get((std::string(TH2Histos[kMFTrackInvPtResolution]->GetName()) + std::string("_1")).c_str()),
+				       *(TH1F*)gDirectory->Get((std::string(TH2Histos[kMFTrackInvPtResolution]->GetName()) + std::string("_2")).c_str()),
+				       "InvPt Summary", seed_cfg,
+				       0, 0, 0, 0,
+				       Form("%.2f%%", 100.0*TH2Histos[kMFTrackInvPtResolution]->Integral()/TH2Histos[kMFTrackInvPtResolution]->GetEntries()),
+				       Form("%.2f%%", 100.0*TH2Histos[kMFTrackQPRec_MC]->Integral()/TH2Histos[kMFTrackQPRec_MC]->GetEntries())
+				       );
 
+ std::cout << errcnt++ << std::endl;
 auto vertexing_resolution = summary_report(*TH2Histos[kMFTTrackDeltaXYVertex],
-           *TH1Histos[kMFTTrackDeltaX],
-           *DeltaX_Error,
-           *TH1Histos[kMFTTrackDeltaPhiDeg],
-           "Vertexing Summary", seed_cfg );
-
+					   *TH1Histos[kMFTTrackDeltaX],
+					   *DeltaX_Error,
+					   *TH1Histos[kMFTTrackDeltaPhiDeg],
+					   "Vertexing Summary",
+					   seed_cfg,
+					   0, 1, 0, 1,
+					   Form("%.2f%%", 100.0*TH2Histos[kMFTTrackDeltaXYVertex]->Integral()/TH2Histos[kMFTTrackDeltaXYVertex]->GetEntries()),
+					   Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaX]->Integral()/TH1Histos[kMFTTrackDeltaX]->GetEntries()),
+					   Form(" "),
+					   Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaPhiDeg]->Integral()/TH1Histos[kMFTTrackDeltaPhiDeg]->GetEntries())
+					   );
+ 
+ std::cout << errcnt++ << std::endl;
 auto vertexing_resolution0_1 = summary_report(*TH2Histos[kMFTTrackDeltaXYVertex0_1],
-           *TH1Histos[kMFTTrackDeltaX0_1],
-           *TH1Histos[kMFTTrackDeltaEta0_1],
-           *TH1Histos[kMFTTrackDeltaPhiDeg0_1],
-           "Vertexing Summary pt < 1", seed_cfg );
+					      *TH1Histos[kMFTTrackDeltaX0_1],
+					      *TH1Histos[kMFTTrackDeltaEta0_1],
+					      *TH1Histos[kMFTTrackDeltaPhiDeg0_1],
+					      "Vertexing Summary pt < 1",
+					      seed_cfg,
+					      0, 1, 1, 1,
+					      Form("%.2f%%", 100.0*TH2Histos[kMFTTrackDeltaXYVertex0_1]->Integral()/TH2Histos[kMFTTrackDeltaXYVertex0_1]->GetEntries()),
+					      Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaX0_1]->Integral()/TH1Histos[kMFTTrackDeltaX0_1]->GetEntries()),
+					      Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaEta0_1]->Integral()/TH1Histos[kMFTTrackDeltaEta0_1]->GetEntries()),
+					      Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaPhiDeg0_1]->Integral()/TH1Histos[kMFTTrackDeltaPhiDeg0_1]->GetEntries())
+					      );
 
 
+ std::cout << errcnt++ << std::endl;
 auto vertexing_resolution1_4 = summary_report(*TH2Histos[kMFTTrackDeltaXYVertex1_4],
-           *TH1Histos[kMFTTrackDeltaX1_4],
-           *TH1Histos[kMFTTrackDeltaEta1_4],
-           *TH1Histos[kMFTTrackDeltaPhiDeg1_4],
-           "Vertexing Summary 1 < p_t < 4", seed_cfg );
+					      *TH1Histos[kMFTTrackDeltaX1_4],
+					      *TH1Histos[kMFTTrackDeltaEta1_4],
+					      *TH1Histos[kMFTTrackDeltaPhiDeg1_4],
+					      "Vertexing Summary 1 < p_t < 4",
+					      seed_cfg,
+					      0, 1, 1, 1,
+					      Form("%.2f%%", 100.0*TH2Histos[kMFTTrackDeltaXYVertex1_4]->Integral()/TH2Histos[kMFTTrackDeltaXYVertex1_4]->GetEntries()),
+					      Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaX1_4]->Integral()/TH1Histos[kMFTTrackDeltaX1_4]->GetEntries()),
+					      Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaEta1_4]->Integral()/TH1Histos[kMFTTrackDeltaEta1_4]->GetEntries()),
+					      Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaPhiDeg1_4]->Integral()/TH1Histos[kMFTTrackDeltaPhiDeg1_4]->GetEntries())
+					      );
 
+ std::cout << errcnt++ << std::endl;
 auto vertexing_resolution4plus = summary_report(*TH2Histos[kMFTTrackDeltaXYVertex4plus],
-           *TH1Histos[kMFTTrackDeltaX4plus],
-           *TH1Histos[kMFTTrackDeltaEta4plus],
-           *TH1Histos[kMFTTrackDeltaPhiDeg4plus],
-           "Vertexing Summary p_t > 4", seed_cfg );
-
-
-
+						*TH1Histos[kMFTTrackDeltaX4plus],
+						*TH1Histos[kMFTTrackDeltaEta4plus],
+						*TH1Histos[kMFTTrackDeltaPhiDeg4plus],
+						"Vertexing Summary p_t > 4",
+						seed_cfg,
+						0, 1, 1, 1,
+                        		        Form("%.2f%%", 100.0*TH2Histos[kMFTTrackDeltaXYVertex4plus]->Integral()/TH2Histos[kMFTTrackDeltaXYVertex4plus]->GetEntries()),
+					        Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaX4plus]->Integral()/TH1Histos[kMFTTrackDeltaX4plus]->GetEntries()),
+					        Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaEta4plus]->Integral()/TH1Histos[kMFTTrackDeltaEta4plus]->GetEntries()),
+					        Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaPhiDeg4plus]->Integral()/TH1Histos[kMFTTrackDeltaPhiDeg4plus]->GetEntries())
+						);
 
 // Write histograms to file and export images
 
