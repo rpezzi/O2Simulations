@@ -13,13 +13,21 @@
 #include "DataFormatsParameters/GRPObject.h"
 #include "DetectorsBase/Propagator.h"
 #include "Field/MagneticField.h"
-#include <TCanvas.h>
+//#include <TCanvas.h>
 #include <TH1F.h>
 #include <TH2F.h>
 #include "SimulationDataFormat/MCEventHeader.h"
 #include <TStyle.h>
 #include <TProfile.h>
 #include <TGraph.h>
+
+// MFTTools
+
+#include "mfttools/MagField.C"
+#include "mfttools/MFTTrackExtrap.C"
+#include "mfttools/HistosHelpers.C"
+
+
 
 //constexpr Double_t MFTLayerZ[] = {-45.3, -46.7, -48.6, -50.0, -52.4, -53.8, -67.7, -69.1, -76.1, -77.5};
 using o2::itsmft::Hit;
@@ -33,267 +41,9 @@ vector<eventFoundTracks> allFoundTracksMFT; // True for reconstructed tracks - o
 using trackHasHitsinMFTDisks = std::array<bool,5>; // Disks with hits from a MFT track
 
 bool DEBUG_VERBOSE = false;
-
 bool EXPORT_HISTOS_IMAGES = false;
 
 
-//_________________________________________________________________________________________________
-double getZField(double x, double y, double z) {
-const auto grp = o2::parameters::GRPObject::loadFrom("o2sim_grp.root");
-if (grp) {
-  o2::base::Propagator::initFieldFromGRP(grp);
-  auto field = static_cast<o2::field::MagneticField*>(TGeoGlobalMagField::Instance()->GetField());
-
-  double position[3] = {x,y,z}; // Field at center of MFT
-  return field->getBz(position);
-
-} else {
-  LOG(ERROR) << "Cannot retrieve GRP from file !";
-  return 0;
-}
-}
-
-//_________________________________________________________________________________________________
-void extrapMFTTrackHelixToZ(o2::mft::TrackMFT& track, double zEnd, double Field)
-{
-   using TrackMFT = o2::mft::TrackMFT;
-
-  /// Track extrapolated to the plane at "zEnd" considering a helix
-
-  if (track.getZ() == zEnd) {
-    return; // nothing to be done if same z
-  }
-
-  // Compute track parameters
-  double dZ = (zEnd - track.getZ());
-  double x0 = track.getX();
-  double y0 = track.getY();
-  double px0 = track.getPx();
-  double py0 = track.getPy();
-  double invtanl0 = 1.0 / track.getTanl();;
-  double invqpt0 = track.getInvQPt();
-  auto q = track.getCharge();
-  auto Hz =  std::copysign(1, Field); 
-  double k = TMath::Abs(3e-4 * Field);
-  auto invk = 1.0 / k;
-  double theta = -invqpt0 * dZ * k * invtanl0;
-  double costheta, sintheta;
-  o2::utils::sincos(theta, sintheta, costheta);
-  double deltax = Hz * py0 * invk * (1.0 - costheta) - px0 * q * invk * sintheta;
-  double deltay = -Hz * px0 * invk * (1.0 - costheta) - py0 * q * invk * sintheta;
-
-  double x = x0 + deltax;
-  double y = y0 + deltay;
-  double phi = track.getPhi() + Hz * theta;
-
-  track.setX(x);
-  track.setY(y);
-  track.setZ(zEnd);
-  track.setPhi(phi);
-}
-
-//_________________________________________________________________________________________________
-template <typename H>
-void exportHisto(const H& histo)
-{
-   //gStyle->SetImageScaling(3.);
-   TCanvas *c = new TCanvas;
-   c->SetBatch();
-   std::string imgpath{"images/"};
-   gSystem->MakeDirectory(imgpath.c_str());
-   H *h = new H(histo);
-   h->Draw();
-   gSystem->ProcessEvents();
-   c->Update();
-   for (std::string type: {".pdf", ".png"}) c->Print((imgpath+std::string(h->GetName()) + type).c_str());
-}
-
-
-//_________________________________________________________________________________________________
-void FitSlicesy( TH2F& histo1,  TH2F& histo2)
-{
-// ## FitSlicesy
-TH2F *h1 = &histo1;
-TH2F *h2 = &histo2;
-
-
-h1->FitSlicesY(0,0,-1,1);
-// Create a canvas and divide it
-auto CanvasName = std::string(h1->GetName()) + std::string("FitSlicesY");
-TCanvas *c1 = new TCanvas(CanvasName.c_str(),CanvasName.c_str(),700,500);
-c1->Divide(2,1);
-TPad *leftPad = (TPad*)c1->cd(1);;
-leftPad->Divide(1,2);
-
-// Draw 2-d original histogram histo1
-leftPad->cd(1);
-gPad->SetTopMargin(0.05);
-h1->Draw();
-
-// Draw histo2
-leftPad->cd(2);
-h2->Draw();
-TPad *rightPad = (TPad*)c1->cd(2);
-rightPad->Divide(1,2);
-rightPad->cd(1);
-TH2F *h1_Fit1 = (TH2F*)gDirectory->Get((std::string(h1->GetName()) + std::string("_1")).c_str());
-h1_Fit1->SetStats(0);
-h1_Fit1->SetTitle("Mean");
-//h1_Fit1->GetXaxis()->SetLabelSize(0.05);
-//h1_Fit1->GetXaxis()->SetTitleSize(0.05);
-//h1_Fit1->GetYaxis()->SetLabelSize(0.05);
-//h1_Fit1->GetYaxis()->SetTitleSize(0.05);
-h1_Fit1->Draw();
-
-// Show fitted "sigma" for each slice
-rightPad->cd(2);
-gPad->SetTopMargin(0.05);
-gPad->SetLeftMargin(0.05);
-TH2F *h1_Fit2 = (TH2F*)gDirectory->Get((std::string(h1->GetName()) + std::string("_2")).c_str());
-h1_Fit2->SetStats(0);
-h1_Fit2->SetTitle("Sigma");
-//h1_Fit2->GetXaxis()->SetLabelSize(0.05);
-//h1_Fit2->GetXaxis()->SetTitleSize(0.05);
-//h1_Fit2->GetYaxis()->SetLabelSize(0.05);
-//h1_Fit2->GetYaxis()->SetTitleSize(0.05);
-h1_Fit2->Draw();
-
-
-//h2_InvPtResolution_0->Write();
-h1_Fit1->Write();
-h1_Fit2->Write();
-c1->Write();
-}
-
-
-//_________________________________________________________________________________________________
-template <typename H1, typename H2, typename H3, typename H4>
-TCanvas summary_report( H1& histo1,
-			H2& histo2,
-			H3& histo3,
-			H4& histo4,
-			std::string CanvasName,
-			std::string tlt="Summary",
-			int h1log=0,
-			int h2log=0,
-			int h3log=0,
-			int h4log=0,
-			std::string h1_foot="",
-			std::string h2_foot="",
-			std::string h3_foot="",
-			std::string h4_foot="")
-{
-H1 *h1 = &histo1;
-H2 *h2 = &histo2;
-H3 *h3 = &histo3;
-H4 *h4 = &histo4;
-
-
-h1->FitSlicesY(0,0,-1,1);
-// Create a canvas and divide it
-TCanvas *c1 = new TCanvas(CanvasName.c_str(),CanvasName.c_str(),1920,1080);
-c1->UseCurrentStyle();
-//c1->SetCanvasSize(1920,1080);
-//gROOT->SetStyle("Bold");
-
-TLatex *Title = new TLatex() ;
-Title->SetTextSize(0.035);
-Title->SetTextAlign(23);
-Title->DrawLatex(.5 ,.995, tlt.c_str());
-Title->Draw();
-
-c1->Divide(2,1);
-TPad *leftPad = (TPad*)c1->cd(1);;
-leftPad->SetPad(0.000,0.000,0.5,.96);
-leftPad->Divide(1,2);
-
-leftPad->cd(1);
-
-gPad->SetBottomMargin(0.15);
-gPad->SetRightMargin(0.15);
-gPad->SetLogy(h1log);
-
- 
-h1->Draw();
-h1->SetMarkerColor(4);
-h1->SetMarkerStyle(21);
-h1->SetMarkerSize(1); 
-//h1->GetXaxis()->SetLabelSize(0.06);
-//h1->GetXaxis()->SetTitleSize(0.05);
-//h1->GetYaxis()->SetLabelSize(0.06);
-//h1->GetYaxis()->SetTitleSize(0.05);
-TLatex *h1_entries = new TLatex() ;
-h1_entries->SetNDC();
-h1_entries->SetTextSize(0.035);
-h1_entries->SetTextAlign(23);
-h1_entries->DrawLatex(.08 ,.08, h1_foot.c_str()) ;
-h1_entries->Draw();
-
-
-
-leftPad->cd(2);
-gPad->SetBottomMargin(0.15);
-gPad->SetTopMargin(0.10);
-gPad->SetLogy(h2log);
-
-
-h2->Draw();
-h2->SetMarkerColor(4);
-h2->SetMarkerStyle(21);
-h2->SetMarkerSize(1);
-TLatex *h2_entries = new TLatex() ;
-h2_entries->SetNDC();
-h2_entries->SetTextSize(0.035);
-h2_entries->SetTextAlign(23);
-h2_entries->DrawLatex(.08 ,.08, h2_foot.c_str()) ;
-h2_entries->Draw();
-
-
-TPad *rightPad = (TPad*)c1->cd(2);
-rightPad->SetPad(0.5,0,1,0.97);
-rightPad->Divide(1,2);
-rightPad->cd(1);
-gPad->SetBottomMargin(0.15);
-gPad->SetTopMargin(0.10);
-gPad->SetLogy(h3log);
-
-h3->Draw();
-h3->SetMarkerColor(4);
-h3->SetMarkerStyle(21);
-h3->SetMarkerSize(1);
-TLatex *h3_entries = new TLatex() ;
-h3_entries->SetNDC();
-h3_entries->SetTextSize(0.035);
-h3_entries->SetTextAlign(23);
-h3_entries->DrawLatex(.08 ,.08, h3_foot.c_str()) ;
-h3_entries->Draw();
-
-rightPad->cd(2);
-gPad->SetBottomMargin(0.15);
-gPad->SetLogy(h4log);
-
-
- 
-h4->Draw();
-h4->SetMarkerColor(4);
-h4->SetMarkerStyle(21);
-h4->SetMarkerSize(1);
-TLatex *h4_entries = new TLatex() ;
-h4_entries->SetNDC();
-h4_entries->SetTextSize(0.035);
-h4_entries->SetTextAlign(23);
-h4_entries->DrawLatex(.08 ,.08, h4_foot.c_str()) ;
-h4_entries->Draw();
-
-c1->cd();
-
-
-
-
-c1->Update();
-c1->Write();
-return c1;
-}
 
 
 //_________________________________________________________________________________________________
@@ -771,6 +521,9 @@ int MFTFitterTrackerChecker( const Char_t *trkFile = "mfttracks.root",
           //trackMFT.setCharge(-1);
 
           extrapMFTTrackHelixToZ(trackMFT, vz_MC, field_z); // propagate track to vertex Z
+          //extrapMFTTrackQuadraticToZ(trackMFT, vz_MC, field_z); // propagate track to vertex Z
+          //extrapMFTTrackLinearToZ(trackMFT, vz_MC); // propagate track to vertex Z
+
           auto dx = trackMFT.getX() - vx_MC;
           auto dy = trackMFT.getY() - vy_MC;
           auto d_eta = trackMFT.getEta() - eta_MC;
@@ -882,8 +635,7 @@ auto pt_resolution = summary_report(*TH2Histos[kMFTrackPtResolution],
 				    Form("%.2f%%", 100.0*TH2Histos[kMFTrackPtResolution]->Integral()/TH2Histos[kMFTrackPtResolution]->GetEntries()),
 				    Form("%.2f%%", 100.0*TH2Histos[kMFTrackQPRec_MC]->Integral()/TH2Histos[kMFTrackQPRec_MC]->GetEntries())
 				    );
-auto errcnt = 0;
-std::cout << errcnt++ << std::endl;
+
 auto invpt_resolution = summary_report(*TH2Histos[kMFTrackInvPtResolution],
 				       *TH2Histos[kMFTrackQPRec_MC],
 				       *(TH1F*)gDirectory->Get((std::string(TH2Histos[kMFTrackInvPtResolution]->GetName()) + std::string("_1")).c_str()),
@@ -894,7 +646,6 @@ auto invpt_resolution = summary_report(*TH2Histos[kMFTrackInvPtResolution],
 				       Form("%.2f%%", 100.0*TH2Histos[kMFTrackQPRec_MC]->Integral()/TH2Histos[kMFTrackQPRec_MC]->GetEntries())
 				       );
 
- std::cout << errcnt++ << std::endl;
 auto vertexing_resolution = summary_report(*TH2Histos[kMFTTrackDeltaXYVertex],
 					   *TH1Histos[kMFTTrackDeltaX],
 					   *DeltaX_Error,
@@ -908,7 +659,6 @@ auto vertexing_resolution = summary_report(*TH2Histos[kMFTTrackDeltaXYVertex],
 					   Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaPhiDeg]->Integral()/TH1Histos[kMFTTrackDeltaPhiDeg]->GetEntries())
 					   );
  
- std::cout << errcnt++ << std::endl;
 auto vertexing_resolution0_1 = summary_report(*TH2Histos[kMFTTrackDeltaXYVertex0_1],
 					      *TH1Histos[kMFTTrackDeltaX0_1],
 					      *TH1Histos[kMFTTrackDeltaEta0_1],
@@ -922,8 +672,6 @@ auto vertexing_resolution0_1 = summary_report(*TH2Histos[kMFTTrackDeltaXYVertex0
 					      Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaPhiDeg0_1]->Integral()/TH1Histos[kMFTTrackDeltaPhiDeg0_1]->GetEntries())
 					      );
 
-
- std::cout << errcnt++ << std::endl;
 auto vertexing_resolution1_4 = summary_report(*TH2Histos[kMFTTrackDeltaXYVertex1_4],
 					      *TH1Histos[kMFTTrackDeltaX1_4],
 					      *TH1Histos[kMFTTrackDeltaEta1_4],
@@ -937,7 +685,6 @@ auto vertexing_resolution1_4 = summary_report(*TH2Histos[kMFTTrackDeltaXYVertex1
 					      Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaPhiDeg1_4]->Integral()/TH1Histos[kMFTTrackDeltaPhiDeg1_4]->GetEntries())
 					      );
 
- std::cout << errcnt++ << std::endl;
 auto vertexing_resolution4plus = summary_report(*TH2Histos[kMFTTrackDeltaXYVertex4plus],
 						*TH1Histos[kMFTTrackDeltaX4plus],
 						*TH1Histos[kMFTTrackDeltaEta4plus],
