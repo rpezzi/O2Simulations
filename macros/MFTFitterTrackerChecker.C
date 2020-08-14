@@ -442,16 +442,16 @@ std::map<int, std::array<double,6>> TH2Binning {
  TFile outFile(outfilename.c_str(),"RECREATE");
 
  // Reconstructed MFT Tracks
- std::cout << "Loop over reconstructed MFT Tracks!" << std::endl;
+ std::cout << "Loop over events and reconstructed MFT Tracks!" << std::endl;
  // TracksMFT - Identify reconstructed tracks
  auto totalTracks = 0;
  for (int iEvent = 0 ; iEvent < numberOfEvents ; iEvent++ ) {
    auto  iTrack = 0;
-   std::cout << "Event = " << iEvent << std::endl;
+   if(DEBUG_VERBOSE) std::cout << "Event = " << iEvent << std::endl;
    o2SimKineTree -> GetEntry(iEvent);
    for (auto &trackMFT : trackMFTVec) {
      auto label = mcLabels->getLabels(iTrack);
-     label[0].print();
+     //label[0].print();
      if( iEvent==label[0].getEventID()) {
        
        if(DEBUG_VERBOSE) std::cout << "  Track #" << iTrack << ":  trackID = " << label[0].getTrackID() <<
