@@ -109,7 +109,7 @@ H3 *h3 = &histo3;
 H4 *h4 = &histo4;
 
 
-h1->FitSlicesY(0,0,-1,1);
+//h1->FitSlicesY(0,0,-1,1);
 // Create a canvas and divide it
 TCanvas *c1 = new TCanvas(CanvasName.c_str(),CanvasName.c_str(),1920,1080);
 c1->UseCurrentStyle();
