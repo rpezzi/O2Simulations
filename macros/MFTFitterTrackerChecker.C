@@ -149,7 +149,7 @@ std::map<int, std::array<double,6>> TH2Binning {
     {kMFTTrackDeltaXYVertex0_1, {300, -.05, .05, 300, -.05, .05} },
       {kMFTTrackDeltaXYVertex1_4, {300, -.05, .05, 300, -.05, .05} },
 	{kMFTTrackDeltaXYVertex4plus, {300, -.05, .05, 300, -.05, .05} },
-	  {kMFTTrackChi2vsFitChi2, {1000, 0, 1000, 100, 0., 100.}},
+	  {kMFTTrackChi2vsFitChi2, {500, 0, 1000, 250, 0., 500.}},
 	    {kMFTrackQPRec_MC, {100, -10, 10, 100, -10, 10} },
 	      {kMFTrackPtResolution, {14, 0, 7, 250, 0, 25} },
 		{kMFTrackInvPtResolution, {14, 0, 7, 300, -2, 2} },
@@ -551,7 +551,7 @@ std::map<int, std::array<double,6>> TH2Binning {
 	 auto phiChi2 = d_Phi*d_Phi/trackMFT.getCovariances()(2,2);
 	 auto etaChi2 = d_eta*d_eta/trackMFT.getCovariances()(3,3);
 	 auto invQPtChi2 = d_invQPt/sqrt(trackMFT.getCovariances()(4,4));
-         auto fitChi2 = xChi2 + yChi2 + phiChi2 + etaChi2 + invQPtChi2;
+         auto fitChi2 = xChi2 + yChi2 + phiChi2 + etaChi2;// + invQPtChi2;
 	 auto trackChi2 = trackMFT.getTrackChi2();
 	 TH1Histos[kMFTTracksP]->Fill(trackMFT.getP());
 	 TH1Histos[kMFTTrackDeltaEta]->Fill(d_eta);
