@@ -1,0 +1,81 @@
+#!/bin/bash
+
+Usage()
+{
+  echo "Usage: ${0##*/} -n N_events(=10) -j number_of_workers(=2) -g generator(=pythia8) -m ITS -m MFT "
+  echo ""
+  echo "  Default module list: PIPE ITS MFT"
+  echo "  Each module must be identified after one \"-m\""
+  exit
+}
+
+genpythia () {
+    
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+NC='\033[0m'
+YELLOW='\033[1;33m'
+
+
+while [ $# -gt 0 ] ; do
+case $1 in
+      -n)
+      NEV="$2";
+      shift 2
+      ;;
+      -j)
+      JOBS="$2";
+      shift 2
+      ;;
+      -m)
+      MODULES="$MODULES $2";
+      shift 2
+      ;;
+      -g)
+      GENERATOR="$2";
+      shift 2
+      ;;
+      -h|--help)
+      Usage
+      ;;
+      *) echo -e "${RED}Wrong input${NC}"; Usage;
+  
+esac
+done
+
+MODULES=${MODULES:-"PIPE ITS MFT"}
+NEV=${NEV:-"10"}
+GENERATOR=${GENERATOR:-"pythia8"}
+JOBS=${JOBS:-"4"}
+START=`date`
+start_time="$(date -u +%s.%N)"
+
+echo -e "Starting generation of $NEV events using $JOBS workers on ${START}"
+
+if o2-sim -m ${MODULES} -e TGeant3 -g ${GENERATOR} -n ${NEV} -j $JOBS > >(tee O2sim_run.log) 2> >(tee O2sim_run.log >&2)
+ then
+ echo -e "Simulation OK"
+ if o2-sim-digitizer-workflow -b --skipDet TPC,ITS,TOF,FT0,EMC,HMP,ZDC,TRD,MCH,MID,FDD,PHS,FV0,CPV  &> digitizer.log
+  then
+  echo -e "Digitization OK"
+  else
+  echo -e "${RED}Digitization Failed${NC}"
+  exit 1
+  fi
+ else
+ echo -e "${RED}Simulation Failed${NC}"
+ exit 1
+fi
+
+end_time="$(date -u +%s.%N)"
+elapsed="$(bc <<<"$end_time-$start_time")"
+SUMMARY="$NEV ${GENERATOR} events \t Modules: ${MODULES}"
+echo  -e $SUMMARY  | tee data_description
+echo " * Date: [`date`]" | tee -a data_description
+echo " * Command: `cat gen.sh`" >> data_description
+echo -e " * Summary: $SUMMARY" | tee -a data_description
+echo -e " * Perforance: $JOBS workers; $elapsed seconds" | tee -a data_description
+}
+
+echo ${0##*/} $@ > gen.sh
+time genpythia $@
