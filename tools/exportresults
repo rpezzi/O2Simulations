@@ -1,0 +1,22 @@
+#!/bin/bash
+
+exportresults () {
+
+
+FILES=${@:-"Fittercheck_mfttracks.root"}
+echo $FILES
+LOGFILE="exportresults.log"
+
+#root -l -b -e ".L $MYMACROS/ExportCanvas.C+" -q
+
+parallel  root.exe -l  \"$MYMACROS/ExportCanvas.C\( '\"{1}\"' , '\"Pt Summary\"' \)\"  -q -b ::: $FILES > $LOGFILE
+#parallel  root.exe -l  \"$MYMACROS/ExportCanvas.C\( '\"{1}\"' , '\"InvPt Summary\"' \)\"  -q -b ::: $FILES  >> $LOGFILE
+parallel  root.exe -l  \"$MYMACROS/ExportCanvas.C\( '\"{1}\"' , '\"Vertexing Summary pt < 1\"' \)\"  -q -b ::: $FILES >> $LOGFILE
+parallel  root.exe -l  \"$MYMACROS/ExportCanvas.C\( '\"{1}\"' , '\"Vertexing Summary\"' \)\"  -q -b ::: $FILES >> $LOGFILE
+parallel  root.exe -l  \"$MYMACROS/ExportCanvas.C\( '\"{1}\"' , '\"Vertexing Summary 1 < p_t < 4\"' \)\"  -q -b ::: $FILES >> $LOGFILE
+parallel  root.exe -l  \"$MYMACROS/ExportCanvas.C\( '\"{1}\"' , '\"Vertexing Summary p_t > 4\"' \)\"  -q -b ::: $FILES >> $LOGFILE
+#parallel  root.exe -l  \"$MYMACROS/ExportCanvas.C\( '\"{1}\"' , '\"DeltaX_Error\"' \)\"  -q -b ::: $FILES >> $LOGFILE
+
+}
+
+time exportresults $@
