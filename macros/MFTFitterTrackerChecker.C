@@ -51,20 +51,21 @@ bool EXPORT_HISTOS_IMAGES = false;
 //_________________________________________________________________________________________________
 int MFTFitterTrackerChecker( const Char_t *trkFile = "mfttracks.root",
                               const Char_t *o2sim_KineFile = "o2sim_Kine.root",
-                              const Char_t *HitsMFTFile = "o2sim_HitsMFT.root",
-                              Double_t pMin = 0.0,
-                              Double_t pMax = 100.0,
-                              Double_t deltaetaMin = -.1,
-                              Double_t deltaetaMax = +.1,
-                              Double_t etaMin = -3.4,
-                              Double_t etaMax = -2.4,
-                              Double_t deltaphiMin = -.2, //-3.15,
-                              Double_t deltaphiMax = .2 //+3.15,
+                              const Char_t *HitsMFTFile = "o2sim_HitsMFT.root"
                             )
 {
 
-
-
+// Histos parameters
+Double_t pMin = 0.0;
+Double_t pMax = 100.0;
+Double_t deltaetaMin = -.1;
+Double_t deltaetaMax = +.1;
+Double_t etaMin = -3.4;
+Double_t etaMax = -2.4;
+Double_t deltaphiMin = -.2; //-3.15,
+Double_t deltaphiMax = .2; //+3.15,
+Double_t deltatanlMin = -2.0;
+Double_t deltatanlMax = 2.0;
 
 // Seed configuration
 std::string seed_cfg{trkFile};
@@ -79,8 +80,9 @@ std::cout << seed_cfg << std::endl;
 
 // histos
 //gROOT->SetStyle("Bold");
-//gStyle->SetStatW(.38);
-//gStyle->SetStatH(.26);
+ gStyle->SetOptStat("emr");
+ gStyle->SetStatW(.28);
+ gStyle->SetStatH(.26);
  gStyle->SetPalette(1,0);
  gStyle->SetCanvasColor(10);
  gStyle->SetCanvasBorderMode(0);
@@ -186,19 +188,19 @@ std::map<int, std::array<double,6>> TH2Binning {
    kMFTTrackDeltaXErr,
    kMFTTrackDeltaYErr,
    kMFTTrackDeltaPhiErr,
-   kMFTTrackDeltaEtaErr,
+   kMFTTrackDeltaTanLErr,
    kMFTTrackDeltainvQPtErr,
    kMFTTrackXChi2,
    kMFTTrackYChi2,
    kMFTTrackPhiChi2,
-   kMFTTrackEtaChi2,
+   kMFTTrackTanlChi2,
    kMFTTrackinvQPtChi2,
    kFitChi2,
    kMFTTracksP,
-   kMFTTrackDeltaEta,
-   kMFTTrackDeltaEta0_1,
-   kMFTTrackDeltaEta1_4,
-   kMFTTrackDeltaEta4plus,
+   kMFTTrackDeltaTanl,
+   kMFTTrackDeltaTanl0_1,
+   kMFTTrackDeltaTanl1_4,
+   kMFTTrackDeltaTanl4plus,
    kMFTTrackDeltaPhi,
    kMFTTrackDeltaPhi0_1,
    kMFTTrackDeltaPhi1_4,
@@ -230,18 +232,18 @@ std::map<int, std::array<double,6>> TH2Binning {
 				       {kMFTTrackDeltaXErr, "Delta X / SigmaX"},
 					 {kMFTTrackDeltaYErr, "Delta Y / SigmaY"},
 					   {kMFTTrackDeltaPhiErr, "Delta Phi at Vertex / SigmaPhi"},
-					     {kMFTTrackDeltaEtaErr, "Delta_eta / SigmaEta"},
+					     {kMFTTrackDeltaTanLErr, "Delta_Tanl / SigmaTanl"},
 					     {kMFTTrackDeltainvQPtErr, "Delta_InvQPt / Sigma_{q/pt}"},
-					       {kMFTTrackDeltaEta, "MFT Tracks Fitted Delta_eta"},
+					       {kMFTTrackDeltaTanl, "MFT Tracks Fitted Delta_tanl"},
 						 {kMFTTrackXChi2, "X Chi2"},
 						   {kMFTTrackYChi2, "Y Chi2"},
 						     {kMFTTrackPhiChi2, "Phi chi2"},
-						       {kMFTTrackEtaChi2, "Eta Chi2"},
+						       {kMFTTrackTanlChi2, "Tanl Chi2"},
 							 {kMFTTrackinvQPtChi2, "InvQPt Chi2"},
 							   {kFitChi2, "Fit Chi2"},
-							     {kMFTTrackDeltaEta0_1, "MFT Tracks eta (pt < 1)"},
-							       {kMFTTrackDeltaEta1_4, "MFT Tracks eta (1 < pt < 4)"},
-								 {kMFTTrackDeltaEta4plus, "MFT Tracks eta (pt > 4)"},
+							     {kMFTTrackDeltaTanl0_1, "MFT Tracks tanl (pt < 1)"},
+							       {kMFTTrackDeltaTanl1_4, "MFT Tracks tanl (1 < pt < 4)"},
+								 {kMFTTrackDeltaTanl4plus, "MFT Tracks tanl (pt > 4)"},
 								   {kMFTTrackDeltaPhi, "MFT Tracks Fitted Phi at Vertex"},
 								     {kMFTTrackDeltaPhi0_1,"MFT Tracks Fitted Phi at Vertex [rad] (pt < 1)"},
 								       {kMFTTrackDeltaPhi1_4,"MFT Tracks Fitted Phi at Vertex [rad] (1 < pt < 4)"},
@@ -270,19 +272,19 @@ std::map<int, std::array<double,6>> TH2Binning {
    {kMFTTracksP, "Standalone MFT Tracks P"},
 				       {kMFTTrackDeltaXErr, "\\Delta X / \\sigma_X"},
 					 {kMFTTrackDeltaYErr, "\\Delta Y / \\sigma_Y"},
-					   {kMFTTrackDeltaPhiErr, "(\\phi _{Fit} - \\phi_{MC}) / \\sigma_\\phi"},
-					     {kMFTTrackDeltaEtaErr, "(\\eta_{Fit} - \\eta_{MC}) / \\sigma_\\eta "},
-					       {kMFTTrackDeltainvQPtErr, "(Pt_{Fit} - Pt_{MC}) / \\sigma_{q/pt}"},
+					   {kMFTTrackDeltaPhiErr, "(\\Delta \\phi / \\sigma_\\phi"},
+					     {kMFTTrackDeltaTanLErr, "\\Delta TanL / \\sigma_{TanL} "},
+					       {kMFTTrackDeltainvQPtErr, "\\Delta(q/Pt) / \\sigma_{q/pt}"},
 						 {kMFTTrackXChi2, "\\chi^2(x)"},
 						   {kMFTTrackYChi2, "\\chi^2(y)"},
 						     {kMFTTrackPhiChi2, "\\chi^2(\\phi)"},
-						       {kMFTTrackEtaChi2, "\\chi^2(\\eta)"},
+						       {kMFTTrackTanlChi2, "\\chi^2(TanL)"},
 							 {kMFTTrackinvQPtChi2, "\\chi^2(InvQP_t)"},
 							   {kFitChi2, "Fit Chi2"},
-							     {kMFTTrackDeltaEta, "\\eta_{Fit} - \\eta_{MC} "},
-							       {kMFTTrackDeltaEta0_1, "\\eta_{Fit} - \\eta_{MC} "},
-								 {kMFTTrackDeltaEta1_4, "\\eta_{Fit} - \\eta_{MC} "},
-								   {kMFTTrackDeltaEta4plus, "\\eta_{Fit} - \\eta_{MC} "},
+							     {kMFTTrackDeltaTanl, "tanl_{Fit} - tanl_{MC} "},
+							       {kMFTTrackDeltaTanl0_1, "tanl_{Fit} - tanl_{MC} (pt < 1)"},
+								 {kMFTTrackDeltaTanl1_4, "tanl_{Fit} - tanl_{MC} (1 < p_t < 4)"},
+								   {kMFTTrackDeltaTanl4plus, "tanl_{Fit} - tanl_{MC} (p_t > 4)"},
 								     {kMFTTrackDeltaPhi, "\\phi _{Fit} - \\phi_{MC}"},
 								       {kMFTTrackDeltaPhi0_1, "\\phi _{Fit} - \\phi_{MC}"},
 									 {kMFTTrackDeltaPhi1_4, "\\phi _{Fit} - \\phi_{MC}"},
@@ -309,21 +311,21 @@ std::map<int, std::array<double,6>> TH2Binning {
 
  std::map<int, std::array<double,3>> TH1Binning {
    {kMFTTracksP, {500, pMin, pMax} },
-     {kMFTTrackDeltaXErr, {500, -5, 5}},
-       {kMFTTrackDeltaYErr, {500, -5, 5}},
-	 {kMFTTrackDeltaPhiErr, {500, -5, +5}},
-	   {kMFTTrackDeltaEtaErr, {500, -5, +5}},
-	     {kMFTTrackDeltainvQPtErr, {500, -5, +5}},
+     {kMFTTrackDeltaXErr, {500, -10, 10}},
+       {kMFTTrackDeltaYErr, {500, -10, 10}},
+	 {kMFTTrackDeltaPhiErr, {500, -10, +10}},
+	   {kMFTTrackDeltaTanLErr, {500, -10, +10}},
+	     {kMFTTrackDeltainvQPtErr, {500, -50, +50}},
 	       {kMFTTrackXChi2, {500, 0, 100}},
 		 {kMFTTrackYChi2, {500, 0, 100}},
 		   {kMFTTrackPhiChi2, {500, 0, 100}},
-		     {kMFTTrackEtaChi2, {500, 0, 100}},
+		     {kMFTTrackTanlChi2, {500, 0, 100}},
 		       {kMFTTrackinvQPtChi2, {500, 0, 100}},
 			 {kFitChi2, {500, 0, 50}},
-			   {kMFTTrackDeltaEta, {1000, deltaetaMin, deltaetaMax}},
-			     {kMFTTrackDeltaEta0_1, {1000, deltaetaMin, deltaetaMax}},
-			       {kMFTTrackDeltaEta1_4, {1000, deltaetaMin, deltaetaMax}},
-				 {kMFTTrackDeltaEta4plus, {1000, deltaetaMin, deltaetaMax}},
+			   {kMFTTrackDeltaTanl, {1000, deltatanlMin, deltatanlMax}},
+			     {kMFTTrackDeltaTanl0_1, {1000, deltatanlMin, deltatanlMax}},
+			       {kMFTTrackDeltaTanl1_4, {1000, deltatanlMin, deltatanlMax}},
+				 {kMFTTrackDeltaTanl4plus, {1000, deltatanlMin, deltatanlMax}},
 				   {kMFTTrackDeltaPhi, {1000, deltaphiMin, deltaphiMax}},
 				     {kMFTTrackDeltaPhi0_1, {1000, deltaphiMin, deltaphiMax}},
 				       {kMFTTrackDeltaPhi1_4, {1000, deltaphiMin, deltaphiMax}},
@@ -353,18 +355,18 @@ std::map<int, std::array<double,6>> TH2Binning {
      {kMFTTrackDeltaXErr, "\\Delta x  /\\sigma_{x}"},
        {kMFTTrackDeltaYErr, "\\Delta y  /\\sigma_{y}"},
 	 {kMFTTrackDeltaPhiErr, "\\Delta \\phi  /\\sigma_{\\phi}"},
-	   {kMFTTrackDeltaEtaErr, "\\Delta \\eta /\\sigma_{\\eta}"},
-	     {kMFTTrackDeltainvQPtErr, "\\Delta q/p_t"},
-	       {kMFTTrackDeltaEta, "\\Delta \\eta"},
+	   {kMFTTrackDeltaTanLErr, "\\Delta tanl /\\sigma_{tanl}"},
+	     {kMFTTrackDeltainvQPtErr, "\\Delta (q/p_t)/\\sigma_{q/Pt}"},
+	       {kMFTTrackDeltaTanl, "\\Delta tanl"},
 		 {kMFTTrackXChi2, "\\chi^2"},
 		   {kMFTTrackYChi2, "\\chi^2"},
 		     {kMFTTrackPhiChi2, "\\chi^2"},
-		       {kMFTTrackEtaChi2, "\\chi^2"},
+		       {kMFTTrackTanlChi2, "\\chi^2"},
 			 {kMFTTrackinvQPtChi2, "\\chi^2"},
 			   {kFitChi2, "\\chi^2"},
-			     {kMFTTrackDeltaEta0_1, "\\Delta \\eta"},
-			       {kMFTTrackDeltaEta1_4, "\\Delta \\eta"},
-				 {kMFTTrackDeltaEta4plus, "\\Delta \\eta"},
+			     {kMFTTrackDeltaTanl0_1, "\\Delta tanl"},
+			       {kMFTTrackDeltaTanl1_4, "\\Delta tanl"},
+				 {kMFTTrackDeltaTanl4plus, "\\Delta tanl"},
 				   {kMFTTrackDeltaPhi, "\\Delta \\phi ~[rad]"},
 				     {kMFTTrackDeltaPhi0_1, "\\Delta \\phi ~[rad]"},
 				       {kMFTTrackDeltaPhi1_4, "\\Delta \\phi ~[rad]"},
@@ -518,6 +520,7 @@ std::map<int, std::array<double,6>> TH2Binning {
 	 auto P_MC = thisTrack->GetP();
 	 auto phi_MC = TMath::ATan2(thisTrack->Py(),thisTrack->Px());
 	 auto eta_MC = atanh (thisTrack->GetStartVertexMomentumZ()/P_MC); // eta;
+	 auto tanl_MC = thisTrack->Pz()/thisTrack->GetPt();
 	 auto pdgcode_MC = thisTrack->GetPdgCode();
 	 //std::cout << "pdgcode_MC = " <<  pdgcode_MC;
 	 int Q_MC;
@@ -539,6 +542,7 @@ std::map<int, std::array<double,6>> TH2Binning {
 	 auto dx = trackMFT.getX() - vx_MC;
 	 auto dy = trackMFT.getY() - vy_MC;
 	 auto d_eta = trackMFT.getEta() - eta_MC;
+	 auto d_tanl = trackMFT.getTanl() - tanl_MC;
 	 auto Pt_fit = trackMFT.getPt();
 	 auto d_invQPt = Q_fit/Pt_fit-Q_MC/Pt_MC;
 	 auto P_fit = trackMFT.getP();
@@ -549,12 +553,12 @@ std::map<int, std::array<double,6>> TH2Binning {
 	 auto xChi2 = dx*dx/trackMFT.getCovariances()(0,0);
 	 auto yChi2 = dy*dy/trackMFT.getCovariances()(1,1);
 	 auto phiChi2 = d_Phi*d_Phi/trackMFT.getCovariances()(2,2);
-	 auto etaChi2 = d_eta*d_eta/trackMFT.getCovariances()(3,3);
-	 auto invQPtChi2 = d_invQPt/sqrt(trackMFT.getCovariances()(4,4));
-         auto fitChi2 = xChi2 + yChi2 + phiChi2 + etaChi2;// + invQPtChi2;
+	 auto tanlChi2 = d_tanl*d_tanl/trackMFT.getCovariances()(3,3);
+	 auto invQPtChi2 = d_invQPt*d_invQPt/sqrt(trackMFT.getCovariances()(4,4));
+         auto fitChi2 = xChi2 + yChi2 + phiChi2 + tanlChi2;// + invQPtChi2;
 	 auto trackChi2 = trackMFT.getTrackChi2();
 	 TH1Histos[kMFTTracksP]->Fill(trackMFT.getP());
-	 TH1Histos[kMFTTrackDeltaEta]->Fill(d_eta);
+	 TH1Histos[kMFTTrackDeltaTanl]->Fill(d_tanl);
 	 TH1Histos[kMFTTrackDeltaPhi]->Fill(d_Phi);
 	 TH1Histos[kMFTTrackDeltaPhiDeg]->Fill(TMath::RadToDeg()*d_Phi);
 	 TH1Histos[kMFTTrackDeltaX]->Fill(dx);
@@ -565,15 +569,15 @@ std::map<int, std::array<double,6>> TH2Binning {
 	 TH1Histos[kMFTTrackDeltaYErr]->Fill(dy/sqrt(trackMFT.getCovariances()(1,1)));
 	 //std::cout << "DeltaPhi / sigmaPhi = " << d_Phi/sqrt(trackMFT.getCovariances()(2,2)) << std::endl;
 	 TH1Histos[kMFTTrackDeltaPhiErr]->Fill(d_Phi/sqrt(trackMFT.getCovariances()(2,2)));
-	 //std::cout << "DeltaEta / sigmaEta = " << d_eta/sqrt(trackMFT.getCovariances()(3,3)) << std::endl;
-	 TH1Histos[kMFTTrackDeltaEtaErr]->Fill(d_eta/sqrt(trackMFT.getCovariances()(3,3)));
+	 //std::cout << "DeltaTanl / sigmaTanl = " << d_tanl/sqrt(trackMFT.getCovariances()(3,3)) << std::endl;
+	 TH1Histos[kMFTTrackDeltaTanLErr]->Fill(d_tanl/sqrt(trackMFT.getCovariances()(3,3)));
 	 //std::cout << "DeltaPt / sigmaPt = " << d_Pt/sqrt(trackMFT.getCovariances()(4,4)) << std::endl;
 	 TH1Histos[kMFTTrackDeltainvQPtErr]->Fill(d_invQPt/sqrt(trackMFT.getCovariances()(4,4)));
 
 	 TH1Histos[kMFTTrackXChi2]->Fill(xChi2);
 	 TH1Histos[kMFTTrackYChi2]->Fill(yChi2);
 	 TH1Histos[kMFTTrackPhiChi2]->Fill(phiChi2);
-	 TH1Histos[kMFTTrackEtaChi2]->Fill(etaChi2);
+	 TH1Histos[kMFTTrackTanlChi2]->Fill(tanlChi2);
 	 TH1Histos[kMFTTrackinvQPtChi2]->Fill(invQPtChi2);
 	 TH1Histos[kFitChi2]->Fill(fitChi2);
 	 TH2Histos[kMFTTrackChi2vsFitChi2]->Fill(fitChi2,trackChi2);
@@ -598,7 +602,7 @@ std::map<int, std::array<double,6>> TH2Binning {
 	 // Differential histos
 	 if (Pt_MC <= 1.0) {
 	   TH2Histos[kMFTTrackDeltaXYVertex0_1]->Fill(dx,dy);
-	   TH1Histos[kMFTTrackDeltaEta0_1]->Fill(d_eta);
+	   TH1Histos[kMFTTrackDeltaTanl0_1]->Fill(d_tanl);
 	   TH1Histos[kMFTTrackDeltaPhi0_1]->Fill(d_Phi);
 	   TH1Histos[kMFTTrackDeltaPhiDeg0_1]->Fill(TMath::RadToDeg()*d_Phi);
 	   TH1Histos[kMFTTrackDeltaX0_1]->Fill(dx);
@@ -607,7 +611,7 @@ std::map<int, std::array<double,6>> TH2Binning {
 	 }
 	 if (Pt_MC > 1.0 and Pt_MC <= 4 ) {
 	   TH2Histos[kMFTTrackDeltaXYVertex1_4]->Fill(dx,dy);
-	   TH1Histos[kMFTTrackDeltaEta1_4]->Fill(d_eta);
+	   TH1Histos[kMFTTrackDeltaTanl1_4]->Fill(d_tanl);
 	   TH1Histos[kMFTTrackDeltaPhi1_4]->Fill(d_Phi);
 	   TH1Histos[kMFTTrackDeltaPhiDeg1_4]->Fill(TMath::RadToDeg()*d_Phi);
 	   TH1Histos[kMFTTrackDeltaX1_4]->Fill(dx);
@@ -616,7 +620,7 @@ std::map<int, std::array<double,6>> TH2Binning {
 	 }
 	 if (Pt_MC > 4.0) {
 	   TH2Histos[kMFTTrackDeltaXYVertex4plus]->Fill(dx,dy);
-	   TH1Histos[kMFTTrackDeltaEta4plus]->Fill(d_eta);
+	   TH1Histos[kMFTTrackDeltaTanl4plus]->Fill(d_tanl);
 	   TH1Histos[kMFTTrackDeltaPhi4plus]->Fill(d_Phi);
 	   TH1Histos[kMFTTrackDeltaPhiDeg4plus]->Fill(TMath::RadToDeg()*d_Phi);
 	   TH1Histos[kMFTTrackDeltaX4plus]->Fill(dx);
@@ -666,6 +670,92 @@ std::map<int, std::array<double,6>> TH2Binning {
  DeltaX_Error->Write();
 
  // Summary Canvases
+
+
+ auto param_resolution = summary_report_3x2(*TH2Histos[kMFTTrackDeltaXYVertex],
+					   *TH2Histos[kMFTrackPtResolution],
+				           *PtRes_Profile,
+					   *DeltaX_Error,
+					   *TH2Histos[kMFTrackQPRec_MC],
+				           *qMatchEff,
+				           "Param Summary",
+				           seed_cfg,
+				           0, 0, 0, 0, 0, 0,
+					   Form("%.2f%%", 100.0*TH2Histos[kMFTTrackDeltaXYVertex]->Integral()/TH2Histos[kMFTTrackDeltaXYVertex]->GetEntries()),
+				           Form("%.2f%%", 100.0*TH2Histos[kMFTrackPtResolution]->Integral()/TH2Histos[kMFTrackPtResolution]->GetEntries()),
+					   "-",
+					   "-",
+				           Form("%.2f%%", 100.0*TH2Histos[kMFTrackQPRec_MC]->Integral()/TH2Histos[kMFTrackQPRec_MC]->GetEntries()),
+					   "-"
+				           );
+
+ 
+ auto covariances_summary = summary_report_3x2(*TH1Histos[kMFTTrackDeltaXErr],
+					       *TH1Histos[kMFTTrackDeltaPhiErr],
+					       *TH1Histos[kMFTTrackDeltainvQPtErr],
+					       *TH1Histos[kMFTTrackDeltaYErr],
+					       *TH1Histos[kMFTTrackDeltaTanLErr],
+					       *TH2Histos[kMFTrackQPRec_MC],
+					       "Covariances Summary",
+					       seed_cfg,
+					       1, 1, 1, 1, 1, 0,
+					       Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaXErr]->Integral()/TH1Histos[kMFTTrackDeltaXErr]->GetEntries()),
+					       Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaPhiErr]->Integral()/TH1Histos[kMFTTrackDeltaPhiErr]->GetEntries()),
+					       Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltainvQPtErr]->Integral()/TH1Histos[kMFTTrackDeltainvQPtErr]->GetEntries()),
+					       Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaYErr]->Integral()/TH1Histos[kMFTTrackDeltaYErr]->GetEntries()),
+					       Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaTanLErr]->Integral()/TH1Histos[kMFTTrackDeltaTanLErr]->GetEntries()),
+					       Form("%.2f%%", 100.0*TH2Histos[kMFTrackQPRec_MC]->Integral()/TH2Histos[kMFTrackQPRec_MC]->GetEntries())
+					       );
+
+
+ auto long_summary = summary_report_3x3(*TH2Histos[kMFTTrackDeltaXYVertex],
+					*TH1Histos[kMFTTrackDeltaXErr],
+					*TH1Histos[kMFTTrackDeltaYErr],
+					*DeltaX_Error,
+					*TH2Histos[kMFTrackQPRec_MC],
+					*TH1Histos[kMFTTrackDeltaPhiErr],
+					*qMatchEff,
+					*TH1Histos[kMFTTrackDeltainvQPtErr],
+					*TH1Histos[kMFTTrackDeltaTanLErr],
+					"Summary3x3",
+					seed_cfg,
+					0, 1, 1, 0, 0, 1, 0, 1, 1,
+					Form("%.2f%%", 100.0*TH2Histos[kMFTTrackDeltaXYVertex]->Integral()/TH2Histos[kMFTTrackDeltaXYVertex]->GetEntries()),
+					Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaXErr]->Integral()/TH1Histos[kMFTTrackDeltaXErr]->GetEntries()),
+					Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaYErr]->Integral()/TH1Histos[kMFTTrackDeltaYErr]->GetEntries()),
+					"-",
+					Form("%.2f%%", 100.0*TH2Histos[kMFTrackQPRec_MC]->Integral()/TH2Histos[kMFTrackQPRec_MC]->GetEntries()),
+					Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaPhiErr]->Integral()/TH1Histos[kMFTTrackDeltaPhiErr]->GetEntries()),
+					"-",
+					Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltainvQPtErr]->Integral()/TH1Histos[kMFTTrackDeltainvQPtErr]->GetEntries()),
+					Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaTanLErr]->Integral()/TH1Histos[kMFTTrackDeltaTanLErr]->GetEntries())
+					);
+
+
+ auto param_summary_diff_pt = summary_report_3x3(*TH1Histos[kMFTTrackDeltaX0_1],
+						 *TH1Histos[kMFTTrackDeltaTanl0_1],
+						 *TH1Histos[kMFTTrackDeltaPhiDeg0_1],
+						 *TH1Histos[kMFTTrackDeltaX1_4],
+						 *TH1Histos[kMFTTrackDeltaTanl1_4],
+						 *TH1Histos[kMFTTrackDeltaPhiDeg1_4],
+						 *TH1Histos[kMFTTrackDeltaX4plus],
+						 *TH1Histos[kMFTTrackDeltaTanl4plus],
+						 *TH1Histos[kMFTTrackDeltaPhiDeg4plus],
+						 "ParamSummaryVsPt",
+						 seed_cfg,
+ 						 1, 1, 1, 1, 1, 1, 1, 1, 1,
+						 Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaX0_1]->Integral()/TH1Histos[kMFTTrackDeltaX0_1]->GetEntries()),
+						 Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaTanl0_1]->Integral()/TH1Histos[kMFTTrackDeltaTanl0_1]->GetEntries()),
+						 Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaPhiDeg0_1]->Integral()/TH1Histos[kMFTTrackDeltaPhiDeg0_1]->GetEntries()),
+						 Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaX1_4]->Integral()/TH1Histos[kMFTTrackDeltaX1_4]->GetEntries()),
+						 Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaTanl1_4]->Integral()/TH1Histos[kMFTTrackDeltaTanl1_4]->GetEntries()),
+						 Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaPhiDeg1_4]->Integral()/TH1Histos[kMFTTrackDeltaPhiDeg1_4]->GetEntries()),
+						 Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaX4plus]->Integral()/TH1Histos[kMFTTrackDeltaX4plus]->GetEntries()),
+						 Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaTanl4plus]->Integral()/TH1Histos[kMFTTrackDeltaTanl4plus]->GetEntries()),
+						 Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaPhiDeg4plus]->Integral()/TH1Histos[kMFTTrackDeltaPhiDeg4plus]->GetEntries())
+						 );
+
+ 
  auto pt_resolution = summary_report(*TH2Histos[kMFTrackPtResolution],
 				     *TH2Histos[kMFTrackQPRec_MC],
 				     *PtRes_Profile,
@@ -696,75 +786,75 @@ std::map<int, std::array<double,6>> TH2Binning {
 					    0, 1, 0, 1,
 					    Form("%.2f%%", 100.0*TH2Histos[kMFTTrackDeltaXYVertex]->Integral()/TH2Histos[kMFTTrackDeltaXYVertex]->GetEntries()),
 					    Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaX]->Integral()/TH1Histos[kMFTTrackDeltaX]->GetEntries()),
-					    Form(" "),
+					    Form("-"),
 					    Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaPhiDeg]->Integral()/TH1Histos[kMFTTrackDeltaPhiDeg]->GetEntries())
 					    );
  
  auto vertexing_resolution0_1 = summary_report(*TH2Histos[kMFTTrackDeltaXYVertex0_1],
 					       *TH1Histos[kMFTTrackDeltaX0_1],
-					       *TH1Histos[kMFTTrackDeltaEta0_1],
+					       *TH1Histos[kMFTTrackDeltaTanl0_1],
 					       *TH1Histos[kMFTTrackDeltaPhiDeg0_1],
 					       "Vertexing Summary pt < 1",
 					       seed_cfg,
 					       0, 1, 1, 1,
 					       Form("%.2f%%", 100.0*TH2Histos[kMFTTrackDeltaXYVertex0_1]->Integral()/TH2Histos[kMFTTrackDeltaXYVertex0_1]->GetEntries()),
 					       Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaX0_1]->Integral()/TH1Histos[kMFTTrackDeltaX0_1]->GetEntries()),
-					       Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaEta0_1]->Integral()/TH1Histos[kMFTTrackDeltaEta0_1]->GetEntries()),
+					       Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaTanl0_1]->Integral()/TH1Histos[kMFTTrackDeltaTanl0_1]->GetEntries()),
 					       Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaPhiDeg0_1]->Integral()/TH1Histos[kMFTTrackDeltaPhiDeg0_1]->GetEntries())
 					       );
 
  auto vertexing_resolution1_4 = summary_report(*TH2Histos[kMFTTrackDeltaXYVertex1_4],
 					       *TH1Histos[kMFTTrackDeltaX1_4],
-					       *TH1Histos[kMFTTrackDeltaEta1_4],
+					       *TH1Histos[kMFTTrackDeltaTanl1_4],
 					       *TH1Histos[kMFTTrackDeltaPhiDeg1_4],
 					       "Vertexing Summary 1 < p_t < 4",
 					       seed_cfg,
 					       0, 1, 1, 1,
 					       Form("%.2f%%", 100.0*TH2Histos[kMFTTrackDeltaXYVertex1_4]->Integral()/TH2Histos[kMFTTrackDeltaXYVertex1_4]->GetEntries()),
 					       Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaX1_4]->Integral()/TH1Histos[kMFTTrackDeltaX1_4]->GetEntries()),
-					       Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaEta1_4]->Integral()/TH1Histos[kMFTTrackDeltaEta1_4]->GetEntries()),
+					       Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaTanl1_4]->Integral()/TH1Histos[kMFTTrackDeltaTanl1_4]->GetEntries()),
 					       Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaPhiDeg1_4]->Integral()/TH1Histos[kMFTTrackDeltaPhiDeg1_4]->GetEntries())
 					       );
 
  auto vertexing_resolution4plus = summary_report(*TH2Histos[kMFTTrackDeltaXYVertex4plus],
 						 *TH1Histos[kMFTTrackDeltaX4plus],
-						 *TH1Histos[kMFTTrackDeltaEta4plus],
+						 *TH1Histos[kMFTTrackDeltaTanl4plus],
 						 *TH1Histos[kMFTTrackDeltaPhiDeg4plus],
 						 "Vertexing Summary p_t > 4",
 						 seed_cfg,
 						 0, 1, 1, 1,
 						 Form("%.2f%%", 100.0*TH2Histos[kMFTTrackDeltaXYVertex4plus]->Integral()/TH2Histos[kMFTTrackDeltaXYVertex4plus]->GetEntries()),
 						 Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaX4plus]->Integral()/TH1Histos[kMFTTrackDeltaX4plus]->GetEntries()),
-						 Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaEta4plus]->Integral()/TH1Histos[kMFTTrackDeltaEta4plus]->GetEntries()),
+						 Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaTanl4plus]->Integral()/TH1Histos[kMFTTrackDeltaTanl4plus]->GetEntries()),
 						 Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaPhiDeg4plus]->Integral()/TH1Histos[kMFTTrackDeltaPhiDeg4plus]->GetEntries())
 						 );
- 
+ /* 
  auto covariances_summary = summary_report(*TH1Histos[kMFTTrackDeltainvQPtErr],
 					   *TH1Histos[kMFTTrackDeltaXErr],
-					   *TH1Histos[kMFTTrackDeltaEtaErr],
+					   *TH1Histos[kMFTTrackDeltaTanLErr],
 					   *TH1Histos[kMFTTrackDeltaPhiErr],
 					   "Covariances Summary",
 					   seed_cfg,
-					   0, 1, 1, 1,
+					   1, 1, 1, 1,
 					   Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltainvQPtErr]->Integral()/TH1Histos[kMFTTrackDeltainvQPtErr]->GetEntries()),
 					   Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaXErr]->Integral()/TH1Histos[kMFTTrackDeltaXErr]->GetEntries()),
-					   Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaEtaErr]->Integral()/TH1Histos[kMFTTrackDeltaEtaErr]->GetEntries()),
+					   Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaTanLErr]->Integral()/TH1Histos[kMFTTrackDeltaTanLErr]->GetEntries()),
 					   Form("%.2f%%", 100.0*TH1Histos[kMFTTrackDeltaPhiErr]->Integral()/TH1Histos[kMFTTrackDeltaPhiErr]->GetEntries())
-					   );
+					   ); */
 
  auto chi2_summary = summary_report(*TH1Histos[kMFTTrackChi2],
 				    *TH1Histos[kMFTTrackXChi2],
-				    *TH1Histos[kMFTTrackEtaChi2],
+				    *TH1Histos[kMFTTrackTanlChi2],
 				    *TH1Histos[kMFTTrackPhiChi2],
 				    "Chi2 Summary",
 				    seed_cfg,
 				    1, 1, 1, 1,				    
 				    Form("%.2f%%", 100.0*TH1Histos[kMFTTrackChi2]->Integral()/TH1Histos[kMFTTrackChi2]->GetEntries()),
 				    Form("%.2f%%", 100.0*TH1Histos[kMFTTrackXChi2]->Integral()/TH1Histos[kMFTTrackXChi2]->GetEntries()),
-				    Form("%.2f%%", 100.0*TH1Histos[kMFTTrackEtaChi2]->Integral()/TH1Histos[kMFTTrackEtaChi2]->GetEntries()),
+				    Form("%.2f%%", 100.0*TH1Histos[kMFTTrackTanlChi2]->Integral()/TH1Histos[kMFTTrackTanlChi2]->GetEntries()),
 				    Form("%.2f%%", 100.0*TH1Histos[kMFTTrackPhiChi2]->Integral()/TH1Histos[kMFTTrackPhiChi2]->GetEntries())
 				    );
-
+ 
  
  // Write histograms to file and export images
 
@@ -803,11 +893,11 @@ std::map<int, std::array<double,6>> TH2Binning {
  std::cout << "---------------------------------------------------" << std::endl;
  std::cout << " P_mean = " << TH1Histos[kMFTTracksP]->GetMean() << std::endl;
  std::cout << " P_StdDev = " << TH1Histos[kMFTTracksP]->GetStdDev() << std::endl;
- std::cout << " Eta_mean = " << TH1Histos[kMFTTrackDeltaEta]->GetMean() << std::endl;
- std::cout << " Eta_StdDev = " << TH1Histos[kMFTTrackDeltaEta]->GetStdDev() << std::endl;
- std::cout << " Eta_StdDev(pt<1) = " << TH1Histos[kMFTTrackDeltaEta0_1]->GetStdDev() << std::endl;
- std::cout << " Eta_StdDev(1<pt<4) = " << TH1Histos[kMFTTrackDeltaEta1_4]->GetStdDev() << std::endl;
- std::cout << " Eta_StdDev(pt>4) = " << TH1Histos[kMFTTrackDeltaEta4plus]->GetStdDev() << std::endl;
+ std::cout << " Tanl_mean = " << TH1Histos[kMFTTrackDeltaTanl]->GetMean() << std::endl;
+ std::cout << " Tanl_StdDev = " << TH1Histos[kMFTTrackDeltaTanl]->GetStdDev() << std::endl;
+ std::cout << " Tanl_StdDev(pt<1) = " << TH1Histos[kMFTTrackDeltaTanl0_1]->GetStdDev() << std::endl;
+ std::cout << " Tanl_StdDev(1<pt<4) = " << TH1Histos[kMFTTrackDeltaTanl1_4]->GetStdDev() << std::endl;
+ std::cout << " Tanl_StdDev(pt>4) = " << TH1Histos[kMFTTrackDeltaTanl4plus]->GetStdDev() << std::endl;
  std::cout << " Phi_mean = " << TH1Histos[kMFTTrackDeltaPhi]->GetMean() << std::endl;
  std::cout << " Phi_StdDev = " << TH1Histos[kMFTTrackDeltaPhi]->GetStdDev() << std::endl;
  std::cout << " Phi_StdDev(pt<1) = " << TH1Histos[kMFTTrackDeltaPhi0_1]->GetStdDev() << std::endl;
