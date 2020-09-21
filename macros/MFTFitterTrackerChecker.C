@@ -209,6 +209,8 @@ std::map<int, std::array<double,6>> TH2Binning {
    kMFTTrackDeltaPhiDeg0_1,
    kMFTTrackDeltaPhiDeg1_4,
    kMFTTrackDeltaPhiDeg4plus,
+   kMFTTrackDeltaInvQPt,
+   kMFTTrackDeltaInvQPtSeed,
    kMFTTrackDeltaX,
    kMFTTrackDeltaX0_1,
    kMFTTrackDeltaX1_4,
@@ -226,46 +228,49 @@ std::map<int, std::array<double,6>> TH2Binning {
  };
 
 
+ 
 
  std::map<int,const char *> TH1Names {
    {kMFTTracksP, "MFT Tracks Fitted p"},
-				       {kMFTTrackDeltaXErr, "Delta X / SigmaX"},
-					 {kMFTTrackDeltaYErr, "Delta Y / SigmaY"},
-					   {kMFTTrackDeltaPhiErr, "Delta Phi at Vertex / SigmaPhi"},
-					     {kMFTTrackDeltaTanLErr, "Delta_Tanl / SigmaTanl"},
-					     {kMFTTrackDeltainvQPtErr, "Delta_InvQPt / Sigma_{q/pt}"},
-					       {kMFTTrackDeltaTanl, "MFT Tracks Fitted Delta_tanl"},
-						 {kMFTTrackXChi2, "X Chi2"},
-						   {kMFTTrackYChi2, "Y Chi2"},
-						     {kMFTTrackPhiChi2, "Phi chi2"},
-						       {kMFTTrackTanlChi2, "Tanl Chi2"},
-							 {kMFTTrackinvQPtChi2, "InvQPt Chi2"},
-							   {kFitChi2, "Fit Chi2"},
-							     {kMFTTrackDeltaTanl0_1, "MFT Tracks tanl (pt < 1)"},
-							       {kMFTTrackDeltaTanl1_4, "MFT Tracks tanl (1 < pt < 4)"},
-								 {kMFTTrackDeltaTanl4plus, "MFT Tracks tanl (pt > 4)"},
-								   {kMFTTrackDeltaPhi, "MFT Tracks Fitted Phi at Vertex"},
-								     {kMFTTrackDeltaPhi0_1,"MFT Tracks Fitted Phi at Vertex [rad] (pt < 1)"},
-								       {kMFTTrackDeltaPhi1_4,"MFT Tracks Fitted Phi at Vertex [rad] (1 < pt < 4)"},
-									 {kMFTTrackDeltaPhi4plus,"MFT Tracks Fitted Phi at Vertex [rad] (pt > 4)"},
-									   {kMFTTrackDeltaPhiDeg,"MFT Tracks Fitted Phi at Vertex [deg]"},
-									     {kMFTTrackDeltaPhiDeg0_1,"MFT Tracks Fitted Phi at Vertex [deg] (pt < 1)"},
-									       {kMFTTrackDeltaPhiDeg1_4,"MFT Tracks Fitted Phi at Vertex [deg] (1 < pt < 4)"},
-										 {kMFTTrackDeltaPhiDeg4plus,"MFT Tracks Fitted Phi at Vertex [deg] (pt > 4)"},
-										   {kMFTTrackDeltaX, "MFT Tracks Delta X"},
-										     {kMFTTrackDeltaX0_1, "MFT Tracks Delta X (pt < 1)"},
-										       {kMFTTrackDeltaX1_4, "MFT Tracks Delta X (1 < pt < 4)"},
-											 {kMFTTrackDeltaX4plus, "MFT Tracks Delta X (pt > 4)"},
-											   {kMFTTrackDeltaY, "MFT Tracks Delta Y"},
-											     {kMFTTrackR, "MFT Tracks Delta R"},
-											       {kMFTTrackQ, "Charge Match"},
-												 {kMFTTrackQ0_1, "Charge Match (pt < 1)"},
-												   {kMFTTrackQ1_4, "Charge Match (1 < pt < 4)"},
-												     {kMFTTrackQ4plus, "Charge Match (pt > 4)"},
-												       {kMFTTrackChi2, "Tracks Chi2"},
-													 {kMCTrackspT, "MC Tracks p_T"},
-													   {kMCTracksp, "MC Tracks p"},
-													     {kMCTrackEta, "MC Tracks eta"}
+     {kMFTTrackDeltaXErr, "Delta X / SigmaX"},
+       {kMFTTrackDeltaYErr, "Delta Y / SigmaY"},
+	 {kMFTTrackDeltaPhiErr, "Delta Phi at Vertex / SigmaPhi"},
+	   {kMFTTrackDeltaTanLErr, "Delta_Tanl / SigmaTanl"},
+	     {kMFTTrackDeltainvQPtErr, "Delta_InvQPt / Sigma_{q/pt}"},
+	       {kMFTTrackDeltaTanl, "MFT Tracks Fitted Delta_tanl"},
+		 {kMFTTrackXChi2, "X Chi2"},
+		   {kMFTTrackYChi2, "Y Chi2"},
+		     {kMFTTrackPhiChi2, "Phi chi2"},
+		       {kMFTTrackTanlChi2, "Tanl Chi2"},
+			 {kMFTTrackinvQPtChi2, "InvQPt Chi2"},
+			   {kFitChi2, "Fit Chi2"},
+			     {kMFTTrackDeltaTanl0_1, "MFT Tracks tanl (pt < 1)"},
+			       {kMFTTrackDeltaTanl1_4, "MFT Tracks tanl (1 < pt < 4)"},
+				 {kMFTTrackDeltaTanl4plus, "MFT Tracks tanl (pt > 4)"},
+				   {kMFTTrackDeltaPhi, "MFT Tracks Fitted Phi at Vertex"},
+				     {kMFTTrackDeltaPhi0_1,"MFT Tracks Fitted Phi at Vertex [rad] (pt < 1)"},
+				       {kMFTTrackDeltaPhi1_4,"MFT Tracks Fitted Phi at Vertex [rad] (1 < pt < 4)"},
+					 {kMFTTrackDeltaPhi4plus,"MFT Tracks Fitted Phi at Vertex [rad] (pt > 4)"},
+					   {kMFTTrackDeltaPhiDeg,"MFT Tracks Fitted Phi at Vertex [deg]"},
+					     {kMFTTrackDeltaPhiDeg0_1,"MFT Tracks Fitted Phi at Vertex [deg] (pt < 1)"},
+					       {kMFTTrackDeltaPhiDeg1_4,"MFT Tracks Fitted Phi at Vertex [deg] (1 < pt < 4)"},
+						 {kMFTTrackDeltaPhiDeg4plus,"MFT Tracks Fitted Phi at Vertex [deg] (pt > 4)"},
+						   {kMFTTrackDeltaInvQPt, "MFT Tracks invQPt"},
+						     {kMFTTrackDeltaInvQPtSeed, "MFT Tracks invQPt Seed"},
+						       {kMFTTrackDeltaX, "MFT Tracks Delta X"},
+							 {kMFTTrackDeltaX0_1, "MFT Tracks Delta X (pt < 1)"},
+							   {kMFTTrackDeltaX1_4, "MFT Tracks Delta X (1 < pt < 4)"},
+							     {kMFTTrackDeltaX4plus, "MFT Tracks Delta X (pt > 4)"},
+							       {kMFTTrackDeltaY, "MFT Tracks Delta Y"},
+								 {kMFTTrackR, "MFT Tracks Delta R"},
+								   {kMFTTrackQ, "Charge Match"},
+								     {kMFTTrackQ0_1, "Charge Match (pt < 1)"},
+								       {kMFTTrackQ1_4, "Charge Match (1 < pt < 4)"},
+									 {kMFTTrackQ4plus, "Charge Match (pt > 4)"},
+									   {kMFTTrackChi2, "Tracks Chi2"},
+									     {kMCTrackspT, "MC Tracks p_T"},
+									       {kMCTracksp, "MC Tracks p"},
+										 {kMCTrackEta, "MC Tracks eta"}
  };
 
  std::map<int,const char *> TH1Titles {
@@ -293,20 +298,22 @@ std::map<int, std::array<double,6>> TH2Binning {
 									       {kMFTTrackDeltaPhiDeg0_1, "\\phi _{Fit} - \\phi_{MC}"},
 										 {kMFTTrackDeltaPhiDeg1_4, "\\phi _{Fit} - \\phi_{MC}"},
 										   {kMFTTrackDeltaPhiDeg4plus, "\\phi _{Fit} - \\phi_{MC}"},
-										     {kMFTTrackDeltaX, "MFT Tracks Delta X at Z_vertex"},
-										       {kMFTTrackDeltaX0_1, "MFT Tracks Delta X at Z_vertex"},
-											 {kMFTTrackDeltaX1_4, "MFT Tracks Delta X at Z_vertex"},
-											   {kMFTTrackDeltaX4plus, "MFT Tracks Delta X at Z_vertex"},
-											     {kMFTTrackDeltaY, "MFT Tracks Delta Y at Z_vertex"},
-											       {kMFTTrackR, "MFT Tracks Delta R at Z_vertex"},
-												 {kMFTTrackQ, "MFT Tracks Charge Match"},
-												   {kMFTTrackQ0_1, "MFT Tracks Charge Match (pt < 1)"},
-												     {kMFTTrackQ1_4, "MFT Tracks Charge Match (1 < pt < 4)"},
-												       {kMFTTrackQ4plus, "MFT Tracks Charge Match (pt > 4)"},
-													 {kMFTTrackChi2, "MFT Tracks ~ \\chi^2"},
-													   {kMCTrackspT, "MC Tracks p_T"},
-													     {kMCTracksp, "MC Tracks p"},
-													       {kMCTrackEta, "MC Tracks Pseudorapidity"}
+										     {kMFTTrackDeltaInvQPt, "MFT Tracks \\Delta invQPt"},
+										       {kMFTTrackDeltaInvQPtSeed, "MFT Tracks \\Delta invQPt Seed"},
+											 {kMFTTrackDeltaX, "MFT Tracks Delta X at Z_vertex"},
+											   {kMFTTrackDeltaX0_1, "MFT Tracks Delta X at Z_vertex"},
+											     {kMFTTrackDeltaX1_4, "MFT Tracks Delta X at Z_vertex"},
+											       {kMFTTrackDeltaX4plus, "MFT Tracks Delta X at Z_vertex"},
+												 {kMFTTrackDeltaY, "MFT Tracks Delta Y at Z_vertex"},
+												   {kMFTTrackR, "MFT Tracks Delta R at Z_vertex"},
+												     {kMFTTrackQ, "MFT Tracks Charge Match"},
+												       {kMFTTrackQ0_1, "MFT Tracks Charge Match (pt < 1)"},
+													 {kMFTTrackQ1_4, "MFT Tracks Charge Match (1 < pt < 4)"},
+													   {kMFTTrackQ4plus, "MFT Tracks Charge Match (pt > 4)"},
+													     {kMFTTrackChi2, "MFT Tracks ~ \\chi^2"},
+													       {kMCTrackspT, "MC Tracks p_T"},
+														 {kMCTracksp, "MC Tracks p"},
+														   {kMCTrackEta, "MC Tracks Pseudorapidity"}
  };
 
  std::map<int, std::array<double,3>> TH1Binning {
@@ -334,20 +341,22 @@ std::map<int, std::array<double,6>> TH2Binning {
 					     {kMFTTrackDeltaPhiDeg0_1, {1000, TMath::RadToDeg()*deltaphiMin, TMath::RadToDeg()*deltaphiMax}},
 					       {kMFTTrackDeltaPhiDeg1_4, {1000, TMath::RadToDeg()*deltaphiMin, TMath::RadToDeg()*deltaphiMax}},
 						 {kMFTTrackDeltaPhiDeg4plus, {1000, TMath::RadToDeg()*deltaphiMin, TMath::RadToDeg()*deltaphiMax}},
-						   {kMFTTrackDeltaX, {1000, -.5, .5}},
-						     {kMFTTrackDeltaX0_1, {1000, -.5, .5}},
-						       {kMFTTrackDeltaX1_4, {1000, -.5, .5}},
-							 {kMFTTrackDeltaX4plus, {1000, -.5, .5}},
-							   {kMFTTrackDeltaY, {1000, -.5, .5}},
-							     {kMFTTrackR, {250, 0, 0.5}},
-							       {kMFTTrackQ, {5, -2.1, 2.1}},
-								 {kMFTTrackQ0_1, {5, -2.1, 2.1}},
-								   {kMFTTrackQ1_4, {5, -2.1, 2.1}},
-								     {kMFTTrackQ4plus, {5, -2.1, 2.1}},
-								       {kMFTTrackChi2, {10000, 0, 1000}},
-									 {kMCTrackspT, {5000, 0, 50}},
-									   {kMCTracksp, {1000, pMin, pMax}},
-									     {kMCTrackEta, {1000, etaMin, etaMax}}
+						   {kMFTTrackDeltaInvQPt, {1000, -10., 10.}},
+						     {kMFTTrackDeltaInvQPtSeed, {1000, -0.5, 0.5}},
+						       {kMFTTrackDeltaX, {1000, -.5, .5}},
+							 {kMFTTrackDeltaX0_1, {1000, -.5, .5}},
+							   {kMFTTrackDeltaX1_4, {1000, -.5, .5}},
+							     {kMFTTrackDeltaX4plus, {1000, -.5, .5}},
+							       {kMFTTrackDeltaY, {1000, -.5, .5}},
+								 {kMFTTrackR, {250, 0, 0.5}},
+								   {kMFTTrackQ, {5, -2.1, 2.1}},
+								     {kMFTTrackQ0_1, {5, -2.1, 2.1}},
+								       {kMFTTrackQ1_4, {5, -2.1, 2.1}},
+									 {kMFTTrackQ4plus, {5, -2.1, 2.1}},
+									   {kMFTTrackChi2, {10000, 0, 1000}},
+									     {kMCTrackspT, {5000, 0, 50}},
+									       {kMCTracksp, {1000, pMin, pMax}},
+										 {kMCTrackEta, {1000, etaMin, etaMax}}
  };
 
  std::map<int,const char *> TH1XaxisTitles {
@@ -375,20 +384,22 @@ std::map<int, std::array<double,6>> TH2Binning {
 					     {kMFTTrackDeltaPhiDeg0_1, "\\Delta \\phi ~[deg]"},
 					       {kMFTTrackDeltaPhiDeg1_4, "\\Delta \\phi ~[deg]"},
 						 {kMFTTrackDeltaPhiDeg4plus, "\\Delta \\phi ~[deg]"},
-						   {kMFTTrackDeltaX, "\\Delta x ~[cm]"},
-						     {kMFTTrackDeltaX0_1, "\\Delta x ~[cm]"},
-						       {kMFTTrackDeltaX1_4, "\\Delta x ~[cm]"},
-							 {kMFTTrackDeltaX4plus, "\\Delta x ~[cm]"},
-							   {kMFTTrackDeltaY, "\\Delta y ~[cm]"},
-							     {kMFTTrackR, "\\Delta r ~[cm]"},
-							       {kMFTTrackQ, "q_{fit}-q_{MC}"},
-								 {kMFTTrackQ0_1, "q_{fit}-q_{MC}"},
-								   {kMFTTrackQ1_4, "q_{fit}-q_{MC}"},
-								     {kMFTTrackQ4plus, "q_{fit}-q_{MC}"},
-								       {kMFTTrackChi2, "\\chi^2"},
-									 {kMCTrackspT, "p_t [GeV]"},
-									   {kMCTracksp, "p [GeV]"},
-									     {kMCTrackEta, " \\eta"}
+						   {kMFTTrackDeltaInvQPt, "\\Delta invQPt"},
+						     {kMFTTrackDeltaInvQPtSeed, "\\Delta invQPt Seed"},
+						       {kMFTTrackDeltaX, "\\Delta x ~[cm]"},
+							 {kMFTTrackDeltaX0_1, "\\Delta x ~[cm]"},
+							   {kMFTTrackDeltaX1_4, "\\Delta x ~[cm]"},
+							     {kMFTTrackDeltaX4plus, "\\Delta x ~[cm]"},
+							       {kMFTTrackDeltaY, "\\Delta y ~[cm]"},
+								 {kMFTTrackR, "\\Delta r ~[cm]"},
+								   {kMFTTrackQ, "q_{fit}-q_{MC}"},
+								     {kMFTTrackQ0_1, "q_{fit}-q_{MC}"},
+								       {kMFTTrackQ1_4, "q_{fit}-q_{MC}"},
+									 {kMFTTrackQ4plus, "q_{fit}-q_{MC}"},
+									   {kMFTTrackChi2, "\\chi^2"},
+									     {kMCTrackspT, "p_t [GeV]"},
+									       {kMCTracksp, "p [GeV]"},
+										 {kMCTrackEta, " \\eta"}
  };
  
  //Create histograms
@@ -544,7 +555,9 @@ std::map<int, std::array<double,6>> TH2Binning {
 	 auto d_eta = trackMFT.getEta() - eta_MC;
 	 auto d_tanl = trackMFT.getTanl() - tanl_MC;
 	 auto Pt_fit = trackMFT.getPt();
+	 auto invQPt_seed = trackMFT.getInvQPtSeed();
 	 auto d_invQPt = Q_fit/Pt_fit-Q_MC/Pt_MC;
+	 auto d_invQPtSeed = invQPt_seed-Q_fit/Pt_fit;//Q_MC/Pt_MC;
 	 auto P_fit = trackMFT.getP();
 	 auto P_res = P_fit / P_MC;
 	 auto Pt_res = Pt_fit / Pt_MC;
@@ -560,6 +573,8 @@ std::map<int, std::array<double,6>> TH2Binning {
 	 TH1Histos[kMFTTracksP]->Fill(trackMFT.getP());
 	 TH1Histos[kMFTTrackDeltaTanl]->Fill(d_tanl);
 	 TH1Histos[kMFTTrackDeltaPhi]->Fill(d_Phi);
+	 TH1Histos[kMFTTrackDeltaInvQPt]->Fill(d_invQPt);
+	 TH1Histos[kMFTTrackDeltaInvQPtSeed]->Fill(d_invQPtSeed);
 	 TH1Histos[kMFTTrackDeltaPhiDeg]->Fill(TMath::RadToDeg()*d_Phi);
 	 TH1Histos[kMFTTrackDeltaX]->Fill(dx);
 	 
