@@ -39,6 +39,7 @@ void MFTAna(const Char_t *hitsFileName = "o2sim_HitsMFT.root",
     nMCTracks = eventHeader->getMCEventStats().getNKeptTracks();
     printf("Analyze event %d with %d MC tracks.\n", event, nMCTracks);
     anaHits.initEvent(event, nMCTracks);
-    anaHits.analyzeHits();
+    anaHits.doHits();
+    anaHits.doMCTracks();
   }
 }

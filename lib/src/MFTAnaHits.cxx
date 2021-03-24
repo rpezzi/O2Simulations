@@ -4,6 +4,7 @@ namespace o2::mftana
 {
 
 using o2::itsmft::Hit;
+using o2::MCTrack;
 
 //_____________________________________________________________________________
 MFTAnaHits::MFTAnaHits()
@@ -33,7 +34,7 @@ void MFTAnaHits::initEvent(Int_t event, Int_t nMCTracks)
 }
 
 //_____________________________________________________________________________
-Bool_t MFTAnaHits::analyzeHits()
+Bool_t MFTAnaHits::doHits()
 {
   mHitTree->GetEntry(mCurrEvent);
   Int_t nHits = mHitVec.size();
@@ -44,10 +45,27 @@ Bool_t MFTAnaHits::analyzeHits()
     Hit* hitp = &(mHitVec).at(n_hit);
     Int_t trkID = hitp->GetTrackID(); // ID of the tracks having given the hit
     Float_t z = hitp->GetZ(); // Z position of the hit => Identify MFT disk
-    mMCTrackHasHitsInDisk.at(trkID)[mChipMapper.chip2Layer(hitp->GetDetectorID()) / 2] = true;
+    mMCTrackHasHitsInDisk[trkID][mChipMapper.chip2Layer(hitp->GetDetectorID()) / 2] = true;
   }
   
   return kTRUE;
 }
   
+//_____________________________________________________________________________
+Bool_t MFTAnaHits::doMCTracks()
+{
+  for (Int_t trkID = 0 ; trkID < mNrMCTracks; trkID++) {
+    MCTrack* mcTrack =  &(mMCTrkVec)[trkID];
+    if (!mcTrack->isPrimary()) {
+      continue;
+    }
+    Int_t nMFTDisksHasHits = 0;
+    for(auto disk : {0, 1, 2, 3, 4}) {
+      nMFTDisksHasHits += (Int_t)(mMCTrackHasHitsInDisk[trkID][disk]);
+    }
+  }
+  
+  return kTRUE;
+}
+
 } // end namespace o2::mftana

@@ -25,15 +25,15 @@ class MFTAnaHits
 
   void initialize(Int_t maxMCTracks);
   void initEvent(Int_t event, Int_t nMCTracks);
-  Bool_t analyzeHits();
+  Bool_t doHits();
+  Bool_t doMCTracks();
 
  private:
   std::vector<o2::itsmft::Hit> mHitVec, *mHitVecP = &mHitVec;
   std::vector<o2::MCTrack> mMCTrkVec, *mMCTrkVecP = &mMCTrkVec;
   std::vector<std::array<bool, o2::mft::constants::DisksNumber>> mMCTrackHasHitsInDisk;
   Int_t mCurrEvent = 0;
-  Int_t mNrMCTracks = 0;
-    
+  Int_t mNrMCTracks = 0;   
 };
   
 };

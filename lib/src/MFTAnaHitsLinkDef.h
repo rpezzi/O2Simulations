@@ -5,6 +5,6 @@
 #pragma link off all functions;
 #pragma link C++ nestedclasses;
 
-#pragma link C++ class o2::mftana::MFTAnaHits + ;
+//#pragma link C++ class o2::mftana::MFTAnaHits + ;
 
 #endif /* __CLING__ */
