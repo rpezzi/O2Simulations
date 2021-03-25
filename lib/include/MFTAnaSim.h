@@ -12,6 +12,14 @@
 namespace o2::mftana
 {
 
+struct MCPart {
+  //MCPart() = default;
+  //MCPart& operator=(const MCPart&) = default;
+  Int_t mPDGCode;
+  std::string mPDGName;
+  Int_t mCount;
+};
+
 class MFTAnaSim
 {
  public:
@@ -24,16 +32,22 @@ class MFTAnaSim
   o2::itsmft::ChipMappingMFT mChipMapper;
 
   void initialize(Int_t maxMCTracks);
-  void initEvent(Int_t event, Int_t nMCTracks);
+  void initEvent(Int_t event, Int_t nMCTracks, Int_t particleSource = 0);
+  Bool_t doParticles();
   Bool_t doHits();
   Bool_t doMCTracks();
 
+  const std::vector<MCPart>& getParticles() { return mParticles; }
+
  private:
+  void countParticle(Int_t pdgCode);
+  Bool_t mPrimary = kTRUE, mSecondary = kFALSE, mAll = kFALSE;
   std::vector<o2::itsmft::Hit> mHitVec, *mHitVecP = &mHitVec;
   std::vector<o2::MCTrack> mMCTrkVec, *mMCTrkVecP = &mMCTrkVec;
   std::vector<std::array<bool, o2::mft::constants::DisksNumber>> mMCTrackHasHitsInDisk;
+  std::vector<MCPart> mParticles;
   Int_t mCurrEvent = 0;
-  Int_t mNrMCTracks = 0;   
+  Int_t mNrMCTracks = 0;
 };
   
 };
