@@ -1,15 +1,15 @@
 include $(ROOTSYS)/etc/Makefile.arch
 
-SOURCES=src/MFTAnaHits.cxx
-HEADERS=include/MFTAnaHits.h
+SOURCES=src/MFTAnaSim.cxx
+HEADERS=include/MFTAnaSim.h
 
-all: libMFTAnaHits.so
+all: libMFTAnaSim.so
 
-DictMFTAnaHits.cxx: $(HEADERS) src/MFTAnaHitsLinkDef.h
+DictMFTAnaSim.cxx: $(HEADERS) src/MFTAnaSimLinkDef.h
 	rootcling -f $@ -c $(CXXFLAGS) -I${ROOT_INCLUDE_PATH} -p $^
 
-libMFTAnaHits.so: DictMFTAnaHits.cxx $(SOURCES)
+libMFTAnaSim.so: DictMFTAnaSim.cxx $(SOURCES)
 	g++ -shared -o$@ `root-config --ldflags` $(CXXFLAGS) -I$(ROOTSYS)/include -I${O2_ROOT}/include -I${O2_ROOT}/include/GPU $^
 
 clean:
-	rm -f libMFTAnaHits.so DictMFTAnaHits.cxx DictMFTAnaHits_rdict.pcm
+	rm -f libMFTAnaSim.so DictMFTAnaSim.cxx DictMFTAnaSim_rdict.pcm

@@ -1,5 +1,5 @@
-#ifndef ALICEO2_MFTANAHITS_H
-#define ALICEO2_MFTANAHITS_H
+#ifndef ALICEO2_MFTANASIM_H
+#define ALICEO2_MFTANASIM_H
 
 #include <TFile.h>
 #include <TTree.h>
@@ -12,11 +12,11 @@
 namespace o2::mftana
 {
 
-class MFTAnaHits
+class MFTAnaSim
 {
  public:
-  MFTAnaHits();
-  ~MFTAnaHits() = default;
+  MFTAnaSim();
+  ~MFTAnaSim() = default;
 
   Int_t mNrEvents = 0;
   TTree* mHitTree = nullptr;
@@ -38,5 +38,5 @@ class MFTAnaHits
   
 };
 
-#endif // ALICEO2_MFTANAHITS_H
+#endif // ALICEO2_MFTANASIM_H
 

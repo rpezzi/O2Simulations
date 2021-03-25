@@ -1,4 +1,4 @@
-#include "../include/MFTAnaHits.h"
+#include "../include/MFTAnaSim.h"
 
 namespace o2::mftana
 {
@@ -7,12 +7,12 @@ using o2::itsmft::Hit;
 using o2::MCTrack;
 
 //_____________________________________________________________________________
-MFTAnaHits::MFTAnaHits()
+MFTAnaSim::MFTAnaSim()
 {
 }
 
 //_____________________________________________________________________________
-void MFTAnaHits::initialize(Int_t maxMCTracks)
+void MFTAnaSim::initialize(Int_t maxMCTracks)
 {
   mKineTree->SetBranchAddress("MCTrack",&mMCTrkVecP);
   mNrEvents = mKineTree->GetEntries();
@@ -22,7 +22,7 @@ void MFTAnaHits::initialize(Int_t maxMCTracks)
 }
 
 //_____________________________________________________________________________
-void MFTAnaHits::initEvent(Int_t event, Int_t nMCTracks)
+void MFTAnaSim::initEvent(Int_t event, Int_t nMCTracks)
 {
   mCurrEvent = event;
   mNrMCTracks = nMCTracks;
@@ -34,7 +34,7 @@ void MFTAnaHits::initEvent(Int_t event, Int_t nMCTracks)
 }
 
 //_____________________________________________________________________________
-Bool_t MFTAnaHits::doHits()
+Bool_t MFTAnaSim::doHits()
 {
   mHitTree->GetEntry(mCurrEvent);
   Int_t nHits = mHitVec.size();
@@ -52,7 +52,7 @@ Bool_t MFTAnaHits::doHits()
 }
   
 //_____________________________________________________________________________
-Bool_t MFTAnaHits::doMCTracks()
+Bool_t MFTAnaSim::doMCTracks()
 {
   for (Int_t trkID = 0 ; trkID < mNrMCTracks; trkID++) {
     MCTrack* mcTrack =  &(mMCTrkVec)[trkID];
