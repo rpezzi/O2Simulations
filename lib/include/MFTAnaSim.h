@@ -40,6 +40,7 @@ class MFTAnaSim
   const std::vector<MCPart>& getParticles() { return mParticles; }
 
  private:
+  enum ParticleSource {kPrimary, kSecondary, kAll};
   void countParticle(Int_t pdgCode);
   Bool_t mPrimary = kTRUE, mSecondary = kFALSE, mAll = kFALSE;
   std::vector<o2::itsmft::Hit> mHitVec, *mHitVecP = &mHitVec;

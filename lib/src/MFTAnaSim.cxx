@@ -37,17 +37,17 @@ void MFTAnaSim::initEvent(Int_t event, Int_t nMCTracks, Int_t particleSource)
   }
   mParticles.clear();
   switch (particleSource) {
-  case 0:
+  case kPrimary:
     mPrimary = kTRUE;
     mSecondary = kFALSE;
     mAll = kFALSE;
     break;
-  case 1:
+  case kSecondary:
     mPrimary = kFALSE;
     mSecondary = kTRUE;
     mAll = kFALSE;
     break;
-  case 2:
+  case kAll:
     mPrimary = kFALSE;
     mSecondary = kFALSE;
     mAll = kTRUE;
@@ -73,6 +73,9 @@ Bool_t MFTAnaSim::doParticles()
 	continue;
       }
       if (mSecondary && mcTrack->isPrimary()) {
+	continue;
+      }
+      if (!mPrimary && !mSecondary) {
 	continue;
       }
     }
