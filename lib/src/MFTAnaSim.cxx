@@ -147,10 +147,9 @@ Bool_t MFTAnaSim::doMCTracks()
 void MFTAnaSim::countParticle(Int_t pdgCode)
 {
   MCPart newPart;  
-  MCPart part;
   Bool_t counted = kFALSE;
-  for (Int_t i = 0; i < mParticles.size(); i++) {
-    part = mParticles.at(i);
+  for (auto i = 0; i < mParticles.size(); i++) {
+    auto& part = mParticles.at(i);
     if (part.mPDGCode == pdgCode) {
       part.mCount++;
       counted = kTRUE;

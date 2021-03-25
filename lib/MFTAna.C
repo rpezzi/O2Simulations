@@ -6,8 +6,8 @@
 
 #endif
 
-void MFTAna(const Char_t *hitsFileName = "o2sim_HitsMFT.root",
-	    const Char_t *kineFileName = "o2sim_Kine.root")
+void MFTAna(const Char_t *hitsFileName = "../tracking/31/o2sim_HitsMFT.root",
+	    const Char_t *kineFileName = "../tracking/31/o2sim_Kine.root")
 {
 
   enum ParticleSource {kPrimary, kSecondary, kAll};
@@ -42,12 +42,12 @@ void MFTAna(const Char_t *hitsFileName = "o2sim_HitsMFT.root",
     nMCTracks = eventHeader->getMCEventStats().getNKeptTracks();
     printf("Analyze event %d with %d MC tracks.\n", event, nMCTracks);
     
-    anaSim.initEvent(event, nMCTracks, kSecondary);
+    anaSim.initEvent(event, nMCTracks, kPrimary);
     
     anaSim.doParticles();
     if (kTRUE || event == 0) {
       auto particles = anaSim.getParticles();
-      printf("and %zu particles.\n", particles.size());
+      printf("and %zu particle species.\n", particles.size());
       for (auto& part : particles) {
 	printf("%6d   %16s   %5d \n", part.mPDGCode, part.mPDGName.c_str(), part.mCount);
       }

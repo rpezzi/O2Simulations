@@ -15,9 +15,9 @@ namespace o2::mftana
 struct MCPart {
   //MCPart() = default;
   //MCPart& operator=(const MCPart&) = default;
-  Int_t mPDGCode;
-  std::string mPDGName;
-  Int_t mCount;
+  Int_t mPDGCode = -1;
+  std::string mPDGName = "";
+  Int_t mCount = 0;
 };
 
 class MFTAnaSim
