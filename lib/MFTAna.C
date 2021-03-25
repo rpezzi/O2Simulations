@@ -42,7 +42,7 @@ void MFTAna(const Char_t *hitsFileName = "../tracking/31/o2sim_HitsMFT.root",
     nMCTracks = eventHeader->getMCEventStats().getNKeptTracks();
     printf("Analyze event %d with %d MC tracks.\n", event, nMCTracks);
     
-    anaSim.initEvent(event, nMCTracks, kPrimary);
+    anaSim.initEvent(event, nMCTracks, kSecondary);
     
     anaSim.doParticles();
     if (kTRUE || event == 0) {
