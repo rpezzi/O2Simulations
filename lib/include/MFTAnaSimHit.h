@@ -21,10 +21,14 @@ class MFTAnaSimHit
   Double_t getY() const { return mY; }
   Double_t getZ() const { return mZ; }
   
+  void setEvent(Int_t ev) { mEvent = ev; }
+  Int_t getEvent() const { return mEvent; }
+
  private:
-  Double_t mX;
-  Double_t mY;
-  Double_t mZ;
+  Int_t mEvent = 0;
+  Double_t mX = 0.;
+  Double_t mY = 0.;
+  Double_t mZ = 0.;
 };
 
 };

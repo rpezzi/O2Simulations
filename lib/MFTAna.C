@@ -3,17 +3,27 @@
 #include "include/MFTAnaSim.h"
 
 #include "SimulationDataFormat/MCEventHeader.h"
+#include "MFTBase/GeometryTGeo.h"
 
 #endif
 
 void MFTAna(const Char_t *hitsFileName = "../tracking/31/o2sim_HitsMFT.root",
-	    const Char_t *kineFileName = "../tracking/31/o2sim_Kine.root")
+	    const Char_t *kineFileName = "../tracking/31/o2sim_Kine.root",
+	    const Char_t *clusFileName = "../tracking/31/mftclusters.root",
+	    const Char_t *tracksFileName = "../tracking/31/mfttracks.root",
+	    const Char_t *geomFileName = "../tracking/31/o2sim_geometry.root")
 {
-
   enum ParticleSource {kPrimary, kSecondary, kAll};
   
+  // create the main analysis class
   auto anaSim = o2::mftana::MFTAnaSim();
-
+  
+  // geometry manager
+  o2::base::GeometryManager::loadGeometry(geomFileName);
+  auto gman = o2::mft::GeometryTGeo::Instance();
+  gman->fillMatrixCache(o2::math_utils::bit2Mask(o2::math_utils::TransformType::L2G));
+  anaSim.mGeoManager = gman;
+  
   // kinematics (MC tracks, particles)
   TFile kineFile(kineFileName);
   TTree *kineTree = (TTree*)kineFile.Get("o2sim");
@@ -22,11 +32,6 @@ void MFTAna(const Char_t *hitsFileName = "../tracking/31/o2sim_HitsMFT.root",
   Int_t nrEvents = kineTree->GetEntries();
   anaSim.mKineTree = kineTree;
   
-  // hits
-  TFile hitsFile(hitsFileName);
-  TTree* hitTree = (TTree*)hitsFile.Get("o2sim");
-  anaSim.mHitTree = hitTree;
-
   // maximum MC tracks per event, from a scan of all events in the file
   Int_t nMCTracks, maxMCTracks = 0;
   for (Int_t event = 0; event < nrEvents ; event++) {
@@ -34,9 +39,27 @@ void MFTAna(const Char_t *hitsFileName = "../tracking/31/o2sim_HitsMFT.root",
     nMCTracks = eventHeader->getMCEventStats().getNKeptTracks();
     maxMCTracks = std::max(maxMCTracks, nMCTracks);
   }
-  anaSim.initialize(maxMCTracks);
   
-  Int_t nHits;
+  // hits
+  TFile hitsFile(hitsFileName);
+  TTree* hitTree = (TTree*)hitsFile.Get("o2sim");
+  anaSim.mHitTree = hitTree;
+  
+  // clusters
+  TFile clusFile(clusFileName);
+  TTree *clusTree = (TTree*)clusFile.Get("o2sim");
+  anaSim.mClusTree = clusTree;
+  
+  // reconstructed tracks, MFT standalone (SA)
+  TFile tracksFile(tracksFileName);
+  TTree *trackTree = (TTree*)tracksFile.Get("o2sim");
+  anaSim.mTrackTree = trackTree;
+  
+  // read the input trees and dimension internal vector containers
+  if (!anaSim.initialize(maxMCTracks)) {
+    return;
+  }
+  
   for (Int_t event = 0; event < nrEvents ; event++) {
     kineTree->GetEntry(event);
     nMCTracks = eventHeader->getMCEventStats().getNKeptTracks();
@@ -45,6 +68,7 @@ void MFTAna(const Char_t *hitsFileName = "../tracking/31/o2sim_HitsMFT.root",
     anaSim.initEvent(event, nMCTracks, kSecondary);
     
     anaSim.doParticles();
+    
     if (kTRUE || event == 0) {
       auto particles = anaSim.getParticles();
       printf("and %zu particle species.\n", particles.size());
@@ -54,7 +78,11 @@ void MFTAna(const Char_t *hitsFileName = "../tracking/31/o2sim_HitsMFT.root",
     }
     
     anaSim.doHits();
-
     anaSim.doMCTracks();
+    anaSim.finishEvent();
   }
+  
+  anaSim.doSATracks();
+  
+  anaSim.finish();
 }
