@@ -27,12 +27,19 @@ MFTAnaSim::MFTAnaSim()
 //_____________________________________________________________________________
 Bool_t MFTAnaSim::initialize(Int_t maxMCTracks)
 {
+  // kinematics
   mKineTree->SetBranchAddress("MCTrack", &mMCTrkVecP);
-  mNrEvents = mKineTree->GetEntries();
+  mNEvents = mKineTree->GetEntries();
   if (mVerboseLevel > 0) {
-    printf("Number of generated events: %d \n", mNrEvents);
+    printf("Number of generated events: %d \n", mNEvents);
   }
+  // loading is per MC event
+
+  // hits
   mHitTree->SetBranchAddress("MFTHit", &mHitVecP);
+  // loading is per MC event
+
+  // clusters
   mClusTree->SetBranchAddress("MFTClusterComp", &mClusVecP);
   if (mClusTree->GetBranch("MFTClusterMCTruth")) {
     mClusTree->SetBranchAddress("MFTClusterMCTruth", &mClusLabels);
@@ -40,9 +47,26 @@ Bool_t MFTAnaSim::initialize(Int_t maxMCTracks)
     printf("No Monte-Carlo information in this file\n");
     return kFALSE;
   }
+  // loading is in a single vector (for all MC events)
   mClusTree->GetEntry(0);
   mNClusters = mClusVec.size();
 
+  // reconstructed tracks, MFT standalone (SA)
+  mTrackTree->SetBranchAddress("MFTTrack", &mTrackVecP);
+  if (mTrackTree->GetBranch("MFTTrackMCTruth")) {
+    mTrackTree->SetBranchAddress("MFTTrackMCTruth", &mTrackLabelsInp);
+  } else {
+    printf("No Monte-Carlo information in this file\n");
+    return kFALSE;
+  }
+  mTrackTree->SetBranchAddress("MFTTrackClusIdx", &mTrackExtClsVecP);
+  // loading is in a single vector (for all MC events)
+  mTrackTree->GetEntry(0);
+  mNSATracks = mTrackVec.size();
+  if (mVerboseLevel >= 0) {
+    printf("Number of SA reconstructed tracks: %d \n", mNSATracks);
+  }
+  
   // maximum MC tracks per event, from a scan of all events in the file
   mMCTrackHasHitsInDisk = std::vector<std::array<bool, o2::mft::constants::DisksNumber>>(maxMCTracks, {0, 0, 0, 0, 0});
   mMCTrackHasHitsInLayer = std::vector<std::array<bool, o2::mft::constants::LayersNumber>>(maxMCTracks, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0});
@@ -58,31 +82,35 @@ Bool_t MFTAnaSim::initialize(Int_t maxMCTracks)
     return kFALSE;
   }
   
+  mAnaSimClusters.clear();	
+
   return kTRUE;
 }
 
 //_____________________________________________________________________________
 void MFTAnaSim::finish()
 {
+  mOutTree3->Fill();  // MFTAnaSimCluster
+
   mOutFile->WriteTObject(mOutTree1);
   mOutFile->WriteTObject(mOutTree2);
   mOutFile->WriteTObject(mOutTree3);
+  
   mOutFile->Close();
 }
   
 //_____________________________________________________________________________
 void MFTAnaSim::finishEvent()
 {
-  mOutTree1->Fill();
-  mOutTree2->Fill();
-  mOutTree3->Fill();
+  mOutTree1->Fill();  // MFTAnaSimTrack
+  mOutTree2->Fill();  // MFTAnaSimHit
 }
 
 //_____________________________________________________________________________
 void MFTAnaSim::initEvent(Int_t event, Int_t nMCTracks, Int_t particleSource)
 {
   mCurrEvent = event;
-  mNrMCTracks = nMCTracks;
+  mNMCTracks = nMCTracks;
   mNHitsInEvent = 0;
   for (UInt_t i = 0; i < mMCTrackHasHitsInDisk.size(); i++) {
     for (auto di = 0; di < o2::mft::constants::DisksNumber; di++) {
@@ -120,16 +148,16 @@ void MFTAnaSim::initEvent(Int_t event, Int_t nMCTracks, Int_t particleSource)
   
   mParticles.clear();
   mAnaSimTracks.clear();	
-  mAnaSimClusters.clear();	
   mAnaSimHits.clear();	
 }
 
 //_____________________________________________________________________________
 Bool_t MFTAnaSim::doParticles()
 {
-  MCPart particle;
-  Int_t pdgCode;
-  for (Int_t trkID = 0 ; trkID < mNrMCTracks; trkID++) {
+  mKineTree->GetEvent(mCurrEvent);
+
+  Int_t pdgCode, trkID = -1;
+  while (trkID++ < mNMCTracks) {
     MCTrack* mcTrack =  &(mMCTrkVec)[trkID];
     if (!mAll) {
       if (mPrimary && !mcTrack->isPrimary()) {
@@ -163,9 +191,7 @@ Bool_t MFTAnaSim::doParticles()
 	     TDatabasePDG::Instance()->GetParticle(pdgCode)->GetName(),
 	     mcTrack->isSecondary(),
 	     mcTrack->GetEnergy());
-      printf("Particle name: %s \n", particle.mPDGName.c_str());
-    }
-    
+    }    
   }
 }
 
@@ -192,7 +218,7 @@ Bool_t MFTAnaSim::doHits()
     printf("In event %d (%d maxMCTracks) found %d hits.\n", mCurrEvent, mMaxMCTracks, nHits);
   }
   // identify trackable tracks
-  for (Int_t n_hit = 0 ; n_hit < nHits; n_hit++) {
+  for (Int_t n_hit = 0; n_hit < nHits; n_hit++) {
     Hit* hitp = &(mHitVec).at(n_hit);
     Int_t trkID = hitp->GetTrackID();
     Int_t chipID = hitp->GetDetectorID();
@@ -212,10 +238,11 @@ Bool_t MFTAnaSim::doMCTracks()
   }
   
   MFTAnaSimTrack asTrack;
+  asTrack.setEvent(mCurrEvent);
   Int_t pdgCode, nMFTHasLayers, nMFTHasDisks;
   Int_t firstHit = -1, lastHit = -1;
   Int_t firstCluster = -1, lastCluster = -1;
-  for (Int_t trkID = 0 ; trkID < mNrMCTracks; trkID++) {
+  for (Int_t trkID = 0; trkID < mNMCTracks; trkID++) {
     MCTrack* mcTrack =  &(mMCTrkVec)[trkID];
 
     pdgCode = mcTrack->GetPdgCode();
@@ -229,41 +256,44 @@ Bool_t MFTAnaSim::doMCTracks()
     for(auto disk : {0, 1, 2, 3, 4}) {
       nMFTHasDisks += (Int_t)(mMCTrackHasHitsInDisk[trkID][disk]);
     }
-    if (nMFTHasDisks > 0) {
-      nMFTHasLayers = 0;
-      for(auto layer : {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}) {
-	if (mMCTrackHasHitsInLayer[trkID][layer]) {
-	  asTrack.setLayer(nMFTHasLayers, layer);
-	  nMFTHasLayers++;
-	}
-      }
-      asTrack.setNDisks(nMFTHasDisks);
-      asTrack.setNLayers(nMFTHasLayers);
-      asTrack.setVertexPxPyPz(mcTrack->Px(), mcTrack->Py(), mcTrack->Pz());
-      asTrack.setVertexXYZ(mcTrack->GetStartVertexCoordinatesX(), mcTrack->GetStartVertexCoordinatesY(), mcTrack->GetStartVertexCoordinatesZ());
-      asTrack.setPDGCode(pdgCode);
-      asTrack.setIsPrimary(mcTrack->isPrimary());
-      asTrack.setMotherTrackId(mcTrack->getMotherTrackId());
-      asTrack.setSecondMotherTrackId(mcTrack->getSecondMotherTrackId());
-      asTrack.setFirstDaughterTrackId(mcTrack->getFirstDaughterTrackId());
-      asTrack.setLastDaughterTrackId(mcTrack->getLastDaughterTrackId());
-
-      // associate hits
-      firstHit = lastHit = -1;
-      findMCTrackHits(trkID, firstHit, lastHit);
-      asTrack.setNHits(lastHit - firstHit + 1);
-      asTrack.setFirstHitIndex(firstHit);
-      asTrack.setLastHitIndex(lastHit);
-      
-      // associate clusters
-      firstCluster = lastCluster = -1;
-      findMCTrackClusters(trkID, firstCluster, lastCluster);
-      asTrack.setNClusters(lastCluster - firstCluster + 1);
-      asTrack.setFirstClusterIndex(firstCluster);
-      asTrack.setLastClusterIndex(lastCluster);
-      
-      mAnaSimTracks.push_back(asTrack);
+    if (nMFTHasDisks == 0) {
+      continue;
     }
+    
+    nMFTHasLayers = 0;
+    for(auto layer : {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}) {
+      if (mMCTrackHasHitsInLayer[trkID][layer]) {
+	asTrack.setLayer(nMFTHasLayers, layer);
+	nMFTHasLayers++;
+      }
+    }
+    asTrack.setMCTrackID(trkID);
+    asTrack.setNDisks(nMFTHasDisks);
+    asTrack.setNLayers(nMFTHasLayers);
+    asTrack.setVertexPxPyPz(mcTrack->Px(), mcTrack->Py(), mcTrack->Pz());
+    asTrack.setVertexXYZ(mcTrack->GetStartVertexCoordinatesX(), mcTrack->GetStartVertexCoordinatesY(), mcTrack->GetStartVertexCoordinatesZ());
+    asTrack.setPDGCode(pdgCode);
+    asTrack.setIsPrimary(mcTrack->isPrimary());
+    asTrack.setMotherTrackId(mcTrack->getMotherTrackId());
+    asTrack.setSecondMotherTrackId(mcTrack->getSecondMotherTrackId());
+    asTrack.setFirstDaughterTrackId(mcTrack->getFirstDaughterTrackId());
+    asTrack.setLastDaughterTrackId(mcTrack->getLastDaughterTrackId());
+    
+    // associate hits
+    firstHit = lastHit = -1;
+    findMCTrackHits(trkID, firstHit, lastHit);
+    asTrack.setNHits(lastHit - firstHit + 1);
+    asTrack.setFirstHitIndex(firstHit);
+    asTrack.setLastHitIndex(lastHit);
+    
+    // associate clusters
+    firstCluster = lastCluster = -1;
+    findMCTrackClusters(trkID, firstCluster, lastCluster);
+    asTrack.setNClusters(lastCluster - firstCluster + 1);
+    asTrack.setFirstClusterIndex(firstCluster);
+    asTrack.setLastClusterIndex(lastCluster);
+    
+    mAnaSimTracks.push_back(asTrack);
   }
   
   return kTRUE;
@@ -274,7 +304,7 @@ void MFTAnaSim::findMCTrackHits(Int_t trkID, Int_t& firstIndex, Int_t& lastIndex
 {
   // write the hits associated to the MC track
   MFTAnaSimHit asHit;
-  for (Int_t n_hit = 0 ; n_hit < mNHitsInEvent; n_hit++) {
+  for (Int_t n_hit = 0; n_hit < mNHitsInEvent; n_hit++) {
     Hit* hitp = &(mHitVec).at(n_hit);
     if (hitp->GetTrackID() != trkID) {
       continue;
@@ -292,11 +322,11 @@ void MFTAnaSim::findMCTrackHits(Int_t trkID, Int_t& firstIndex, Int_t& lastIndex
 void MFTAnaSim::findMCTrackClusters(Int_t trkID, Int_t& firstIndex, Int_t& lastIndex)
 {
   // write the clusters associated to the MC track
-  Int_t clusSrcID, clusTrkID, clusEvnID, npix;
+  Int_t clusSrcID, clusTrkID, clusEvnID, nPixels;
   Bool_t fake;
   o2::math_utils::Point3D<Float_t> locC;
   MFTAnaSimCluster asCluster;
-  for (Int_t n_cls = 0 ; n_cls < mNClusters; n_cls++) {
+  for (Int_t n_cls = 0; n_cls < mNClusters; n_cls++) {
     auto cluster = mClusVec[n_cls];
     auto& label = (mClusLabels->getLabels(n_cls))[0];
     if (label.isNoise()) {
@@ -308,7 +338,7 @@ void MFTAnaSim::findMCTrackClusters(Int_t trkID, Int_t& firstIndex, Int_t& lastI
     }
     auto chipID = cluster.getChipID(); 
     auto pattID = cluster.getPatternID();
-    npix = 0;
+    nPixels = 0;
     if (pattID == o2::itsmft::CompCluster::InvalidPatternID || mTopoDict.isGroup(pattID)) {
       // temporary fix ...
       locC = mTopoDict.getClusterCoordinates(cluster);
@@ -317,7 +347,7 @@ void MFTAnaSim::findMCTrackClusters(Int_t trkID, Int_t& firstIndex, Int_t& lastI
       //locC = mTopoDict.getClusterCoordinates(cluster, patt);
     } else {
       locC = mTopoDict.getClusterCoordinates(cluster);
-      npix = mTopoDict.getNpixels(pattID);
+      nPixels = mTopoDict.getNpixels(pattID);
     }
     // Transformation to the local --> global
     auto gloC = mGeoManager->getMatrixL2G(chipID) * locC;
@@ -354,4 +384,60 @@ void MFTAnaSim::countParticle(Int_t pdgCode)
   }
 }
   
+//_____________________________________________________________________________
+Bool_t MFTAnaSim::doSATracks()
+{
+  MFTAnaSimSATrack asSATrack;
+  
+  Int_t srcID, trkID, evnID, nPixels;
+  Bool_t fake;
+  o2::math_utils::Point3D<Float_t> locC;
+  Int_t iTrack = 0;
+  for (auto &track : mTrackVec) {
+    auto trkX = track.getX();
+    auto trkY = track.getY();
+    auto trkZ = track.getZ();
+    auto trkLabel = mTrackLabels.at(iTrack);
+    //trkLabel.print();
+    auto eventID = trkLabel.getEventID();
+    auto outParam = track.getOutParam();
+    auto trkOutX = outParam.getX();
+    auto trkOutY = outParam.getY();
+    auto trkOutZ = outParam.getZ();
+    printf("Track %3d   isCA %1d   x,y,z-in  %7.3f  %7.3f  %7.3f  x,y,z-out  %7.3f  %7.3f  %7.3f   ev %2d   labels ", iTrack, track.isCA(), trkX, trkY, trkZ, trkOutX, trkOutY, trkOutZ, eventID);
+    auto trkID = trkLabel.getTrackID();
+    printf("%4d   \n", trkID);
+    auto nClus = track.getNumberOfPoints();
+    auto offset = track.getExternalClusterIndexOffset();
+    printf("Number of clusters %2d \n", nClus);
+    for (int i_cls = 0; i_cls < nClus; i_cls++) {
+      auto clusEntry = mTrackExtClsVec[offset + i_cls];
+      auto cluster = mClusVec[clusEntry];
+      auto& clusLabel = (mClusLabels->getLabels(clusEntry))[0];
+      if (clusLabel.isNoise()) {
+	continue;
+      }
+      clusLabel.get(trkID, evnID, srcID, fake);
+      auto chipID = cluster.getChipID(); 
+      auto pattID = cluster.getPatternID();
+      nPixels = 0;
+      if (pattID == o2::itsmft::CompCluster::InvalidPatternID || mTopoDict.isGroup(pattID)) {
+	// temporary fix ...
+	printf("temporary fix for group pattern ...\n");
+	locC = mTopoDict.getClusterCoordinates(cluster);
+        
+	//o2::itsmft::ClusterPattern patt(pattIt);
+	//locC = mTopoDict.getClusterCoordinates(cluster, patt);
+      } else {
+	locC = mTopoDict.getClusterCoordinates(cluster);
+	nPixels = mTopoDict.getNpixels(pattID);
+      }
+      // Transformation to the local --> global
+      auto gloC = mGeoManager->getMatrixL2G(chipID) * locC;
+      printf("Cluster %5d   chip ID %03d   evn %2d   mctrk %4d   x,y,z  %7.3f  %7.3f  %7.3f \n", i_cls, cluster.getChipID(), evnID, trkID, gloC.X(), gloC.Y(), gloC.Z());
+    }
+    iTrack++;
+  }
+}
+
 }; // end namespace o2::mftana

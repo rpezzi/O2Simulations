@@ -14,9 +14,6 @@ class MFTAnaSimCluster : public o2::mft::Cluster
   MFTAnaSimCluster& operator=(const MFTAnaSimCluster&) = default;
 
  private:
-  Double_t mX;
-  Double_t mY;
-  Double_t mZ;
 };
 
 };
