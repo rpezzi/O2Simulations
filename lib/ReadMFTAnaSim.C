@@ -25,11 +25,17 @@ void ReadMFTAnaSim()
 
   Int_t nEntries1 = tree1->GetEntries();
   Int_t nEntries2 = tree2->GetEntries();
+  if (nEntries1 != nEntries2) {
+    printf("Different number of entries in the MC hits & tracks trees!\n");
+    return;
+  }
+  printf("Found %d event(s). \n", nEntries1);
   Int_t nEntries3 = tree3->GetEntries();
+  tree3->GetEntry(0);
+  
   for (Int_t entry = 0; entry < nEntries1; entry++) {
     tree1->GetEntry(entry);
     tree2->GetEntry(entry);
-    tree3->GetEntry(entry);
     Int_t iTrack = 0;
     for (auto& track : anaSimTracks) {
       

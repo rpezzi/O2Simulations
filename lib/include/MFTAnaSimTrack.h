@@ -1,20 +1,23 @@
 #ifndef MFT_ANA_SIM_TRACK
 #define MFT_ANA_SIM_TRACK
 
-#include "MFTAnaMCTrack.h"
+#include "MFTAnaSimMCTrack.h"
 
 #include "MFTBase/Constants.h"
 
 namespace o2::mftana
 {
 
-class MFTAnaSimTrack : public MFTAnaMCTrack
+class MFTAnaSimTrack : public MFTAnaSimMCTrack
 {
  public:
   MFTAnaSimTrack();
   ~MFTAnaSimTrack() = default;
   MFTAnaSimTrack& operator=(const MFTAnaSimTrack&) = default;
 
+  void setMCTrackID(Int_t id) { mMCTrackID = id; }
+  Int_t getMCTrackID() const { return mMCTrackID; }
+  
   void setNDisks(Int_t nd) { mNDisks = nd; }
   Int_t getNDisks() const { return mNDisks; }
   
@@ -42,7 +45,11 @@ class MFTAnaSimTrack : public MFTAnaMCTrack
   void setLayer(Int_t index, Int_t layer) { mLayers[index] = layer; }
   Int_t getLayer(Int_t index) const { return mLayers[index]; }
   
+  void setEvent(Int_t ev) { mEvent = ev; }
+  Int_t getEvent() const { return mEvent; }
+
  private:
+  Int_t mEvent = 0;
   Int_t mNDisks = 0;
   Int_t mNLayers = 0;
   Int_t mNHits = 0;
@@ -51,6 +58,7 @@ class MFTAnaSimTrack : public MFTAnaMCTrack
   Int_t mNClusters = 0;
   Int_t mFirstClusterIndex = 0;
   Int_t mLastClusterIndex = 0;
+  Int_t mMCTrackID = 0;
   Int_t mLayers[o2::mft::constants::LayersNumber];
 };
 
