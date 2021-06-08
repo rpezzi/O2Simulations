@@ -11,24 +11,24 @@ class MFTAnaSimHit
   ~MFTAnaSimHit() = default;
   MFTAnaSimHit& operator=(const MFTAnaSimHit&) = default;
 
-  void setXYZ(Double_t x, Double_t y, Double_t z)
+  void setXYZ(double x, double y, double z)
   {
     mX = x;
     mY = y;
     mZ = z;
   }
-  Double_t getX() const { return mX; }
-  Double_t getY() const { return mY; }
-  Double_t getZ() const { return mZ; }
+  double getX() const { return mX; }
+  double getY() const { return mY; }
+  double getZ() const { return mZ; }
   
-  void setEvent(Int_t ev) { mEvent = ev; }
-  Int_t getEvent() const { return mEvent; }
+  void setEvent(int ev) { mEvent = ev; }
+  int getEvent() const { return mEvent; }
 
  private:
-  Int_t mEvent = 0;
-  Double_t mX = 0.;
-  Double_t mY = 0.;
-  Double_t mZ = 0.;
+  int mEvent = 0;
+  double mX = 0.;
+  double mY = 0.;
+  double mZ = 0.;
 };
 
 };
