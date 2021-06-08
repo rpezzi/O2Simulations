@@ -23,25 +23,25 @@ void ReadMFTAnaSim()
   std::vector<MFTAnaSimCluster> anaSimClusters, *anaSimClustersP = &anaSimClusters;
   tree3->SetBranchAddress("MFTAnaSimCluster", &anaSimClustersP);
 
-  Int_t nEntries1 = tree1->GetEntries();
-  Int_t nEntries2 = tree2->GetEntries();
+  int nEntries1 = tree1->GetEntries();
+  int nEntries2 = tree2->GetEntries();
   if (nEntries1 != nEntries2) {
     printf("Different number of entries in the MC hits & tracks trees!\n");
     return;
   }
   printf("Found %d event(s). \n", nEntries1);
-  Int_t nEntries3 = tree3->GetEntries();
+  int nEntries3 = tree3->GetEntries();
   tree3->GetEntry(0);
   
-  for (Int_t entry = 0; entry < nEntries1; entry++) {
+  for (int entry = 0; entry < nEntries1; entry++) {
     tree1->GetEntry(entry);
     tree2->GetEntry(entry);
-    Int_t iTrack = 0;
+    int iTrack = 0;
     for (auto& track : anaSimTracks) {
       
       printf("Event %d Track %d NDisks %d NLayers %d ", entry, iTrack, track.getNDisks(), track.getNLayers());
       printf("layers: ");
-      for (Int_t index = 0; index < track.getNLayers(); index++) {
+      for (int index = 0; index < track.getNLayers(); index++) {
 	printf("%d ", track.getLayer(index));
       }
       printf("\n");
@@ -49,7 +49,7 @@ void ReadMFTAnaSim()
       // hits
       printf("NHits %d Hit range: %d %d \n", track.getNHits(), track.getFirstHitIndex(), track.getLastHitIndex());
       if (track.getFirstHitIndex() >= 0) {
-	for (Int_t iHit = track.getFirstHitIndex(); iHit <= track.getLastHitIndex(); iHit++) {
+	for (int iHit = track.getFirstHitIndex(); iHit <= track.getLastHitIndex(); iHit++) {
 	  auto& hit = anaSimHits.at(iHit);
 	  printf("%5d:   %7.3f   %7.3f   %7.3f \n", iHit, hit.getX(), hit.getY(), hit.getZ());
 	}
@@ -58,7 +58,7 @@ void ReadMFTAnaSim()
       // clusters
       printf("NClusters %d Cluster range: %d %d \n", track.getNClusters(), track.getFirstClusterIndex(), track.getLastClusterIndex());
       if (track.getFirstClusterIndex() >= 0) {
-	for (Int_t iCls = track.getFirstClusterIndex(); iCls <= track.getLastClusterIndex(); iCls++) {
+	for (int iCls = track.getFirstClusterIndex(); iCls <= track.getLastClusterIndex(); iCls++) {
 	  auto& cluster = anaSimClusters.at(iCls);
 	  printf("%5d:   %7.3f   %7.3f   %7.3f \n", iCls, cluster.getX(), cluster.getY(), cluster.getZ());
 	}

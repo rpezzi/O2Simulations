@@ -15,7 +15,7 @@ class MFTAnaSimMCTrack
   ~MFTAnaSimMCTrack() = default;
   MFTAnaSimMCTrack& operator=(const MFTAnaSimMCTrack&) = default;
   
-  Double_t getP() const
+  double getP() const
   {
     double mx(mStartVertexMomentumX);
     double my(mStartVertexMomentumY);
@@ -23,23 +23,23 @@ class MFTAnaSimMCTrack
     return std::sqrt(mx * mx + my * my + mz * mz);
   }
 
-  Double_t getPt() const
+  double getPt() const
   {
     double mx(mStartVertexMomentumX);
     double my(mStartVertexMomentumY);
     return std::sqrt(mx * mx + my * my);
   }
 
-  Double_t getPhi() const
+  double getPhi() const
   {
     double mx(mStartVertexMomentumX);
     double my(mStartVertexMomentumY);
     return (TMath::Pi() + TMath::ATan2(-mx, -my));
   }
 
-  Double_t getEta() const
+  double getEta() const
   {
-    double_t pmom = getP();
+    double pmom = getP();
     double mz(mStartVertexMomentumZ);
     if (pmom != TMath::Abs(mz)) {
       return 0.5 * std::log((pmom + mz) / (pmom - mz));
@@ -48,65 +48,65 @@ class MFTAnaSimMCTrack
     }
   }
 
-  Double_t getTheta() const
+  double getTheta() const
   {
     double mz(mStartVertexMomentumZ);
     return (mz == 0) ? TMath::PiOver2() : TMath::ACos(mz / getP());
   }
 
-  void setIsPrimary(Bool_t isPrimary) { mIsPrimary = isPrimary; }
-  Bool_t isPrimary() const { return mIsPrimary; }
+  void setIsPrimary(bool isPrimary) { mIsPrimary = isPrimary; }
+  bool isPrimary() const { return mIsPrimary; }
 
-  void setVertexPxPyPz(Double_t px, Double_t py, Double_t pz)
+  void setVertexPxPyPz(double px, double py, double pz)
   {
     mStartVertexMomentumX = px;
     mStartVertexMomentumY = py;
     mStartVertexMomentumZ = pz;
   }
-  void setVertexXYZ(Double_t x, Double_t y, Double_t z)
+  void setVertexXYZ(double x, double y, double z)
   {
     mStartVertexCoordinatesX = x;
     mStartVertexCoordinatesY = y;
     mStartVertexCoordinatesZ = z;
   }
 
-  Double_t getVertexPx() const { return mStartVertexMomentumX; }
-  Double_t getVertexPy() const { return mStartVertexMomentumY; }
-  Double_t getVertexPz() const { return mStartVertexMomentumZ; }
+  double getVertexPx() const { return mStartVertexMomentumX; }
+  double getVertexPy() const { return mStartVertexMomentumY; }
+  double getVertexPz() const { return mStartVertexMomentumZ; }
 
-  Double_t getVertexX() const { return mStartVertexCoordinatesX; }
-  Double_t getVertexY() const { return mStartVertexCoordinatesY; }
-  Double_t getVertexZ() const { return mStartVertexCoordinatesZ; }
+  double getVertexX() const { return mStartVertexCoordinatesX; }
+  double getVertexY() const { return mStartVertexCoordinatesY; }
+  double getVertexZ() const { return mStartVertexCoordinatesZ; }
 
-  void setPDGCode(Int_t pdgCode)
+  void setPDGCode(int pdgCode)
   {
     mPDGCode = pdgCode;
     mPDGName = std::string(TDatabasePDG::Instance()->GetParticle(pdgCode)->GetName());
   }
   
-  void setMotherTrackId(Int_t trkid) { mMotherTrackId = trkid; }
-  Int_t getMotherTrackId() const { return mMotherTrackId; }
-  void setSecondMotherTrackId(Int_t trkid) { mSecondMotherTrackId = trkid; }
-  Int_t getSecondMotherTrackId() const { return mSecondMotherTrackId; }
-  void setFirstDaughterTrackId(Int_t trkid) { mFirstDaughterTrackId = trkid; }
-  Int_t getFirstDaughterTrackId() const { return mFirstDaughterTrackId; }
-  void setLastDaughterTrackId(Int_t trkid) { mLastDaughterTrackId = trkid; }
-  Int_t getLastDaughterTrackId() const { return mLastDaughterTrackId; }
+  void setMotherTrackId(int trkid) { mMotherTrackId = trkid; }
+  int getMotherTrackId() const { return mMotherTrackId; }
+  void setSecondMotherTrackId(int trkid) { mSecondMotherTrackId = trkid; }
+  int getSecondMotherTrackId() const { return mSecondMotherTrackId; }
+  void setFirstDaughterTrackId(int trkid) { mFirstDaughterTrackId = trkid; }
+  int getFirstDaughterTrackId() const { return mFirstDaughterTrackId; }
+  void setLastDaughterTrackId(int trkid) { mLastDaughterTrackId = trkid; }
+  int getLastDaughterTrackId() const { return mLastDaughterTrackId; }
 
  private: 
-  Int_t mPDGCode = -1;
+  int mPDGCode = -1;
   std::string mPDGName = "";
-  Bool_t mIsPrimary = kTRUE;
-  Double_t mStartVertexCoordinatesX = 0.;
-  Double_t mStartVertexCoordinatesY = 0.;
-  Double_t mStartVertexCoordinatesZ = 0.;
-  Double_t mStartVertexMomentumX = 0.;
-  Double_t mStartVertexMomentumY = 0.;
-  Double_t mStartVertexMomentumZ = 0.;
-  Int_t mMotherTrackId = -1;
-  Int_t mSecondMotherTrackId = -1;
-  Int_t mFirstDaughterTrackId = -1;
-  Int_t mLastDaughterTrackId = -1;
+  bool mIsPrimary = kTRUE;
+  double mStartVertexCoordinatesX = 0.;
+  double mStartVertexCoordinatesY = 0.;
+  double mStartVertexCoordinatesZ = 0.;
+  double mStartVertexMomentumX = 0.;
+  double mStartVertexMomentumY = 0.;
+  double mStartVertexMomentumZ = 0.;
+  int mMotherTrackId = -1;
+  int mSecondMotherTrackId = -1;
+  int mFirstDaughterTrackId = -1;
+  int mLastDaughterTrackId = -1;
 };
 
 };

@@ -7,11 +7,11 @@
 
 #endif
 
-void MFTAna(const Char_t *hitsFileName = "../tracking/31/o2sim_HitsMFT.root",
-	    const Char_t *kineFileName = "../tracking/31/o2sim_Kine.root",
-	    const Char_t *clusFileName = "../tracking/31/mftclusters.root",
-	    const Char_t *tracksFileName = "../tracking/31/mfttracks.root",
-	    const Char_t *geomFileName = "../tracking/31/o2sim_geometry.root")
+void MFTAna(const char *hitsFileName = "../tracking/31/o2sim_HitsMFT.root",
+	    const char *kineFileName = "../tracking/31/o2sim_Kine.root",
+	    const char *clusFileName = "../tracking/31/mftclusters.root",
+	    const char *tracksFileName = "../tracking/31/mfttracks.root",
+	    const char *geomFileName = "../tracking/31/o2sim_geometry.root")
 {
   enum ParticleSource {kPrimary, kSecondary, kAll};
   
@@ -29,12 +29,12 @@ void MFTAna(const Char_t *hitsFileName = "../tracking/31/o2sim_HitsMFT.root",
   TTree *kineTree = (TTree*)kineFile.Get("o2sim");
   o2::dataformats::MCEventHeader* eventHeader = nullptr;
   kineTree->SetBranchAddress("MCEventHeader.", &eventHeader);
-  Int_t nrEvents = kineTree->GetEntries();
+  int nrEvents = kineTree->GetEntries();
   anaSim.mKineTree = kineTree;
   
   // maximum MC tracks per event, from a scan of all events in the file
-  Int_t nMCTracks, maxMCTracks = 0;
-  for (Int_t event = 0; event < nrEvents ; event++) {
+  int nMCTracks, maxMCTracks = 0;
+  for (int event = 0; event < nrEvents ; event++) {
     kineTree->GetEntry(event);
     nMCTracks = eventHeader->getMCEventStats().getNKeptTracks();
     maxMCTracks = std::max(maxMCTracks, nMCTracks);
@@ -60,7 +60,7 @@ void MFTAna(const Char_t *hitsFileName = "../tracking/31/o2sim_HitsMFT.root",
     return;
   }
   
-  for (Int_t event = 0; event < nrEvents ; event++) {
+  for (int event = 0; event < nrEvents ; event++) {
     kineTree->GetEntry(event);
     nMCTracks = eventHeader->getMCEventStats().getNKeptTracks();
     printf("Analyze event %d with %d MC tracks.\n", event, nMCTracks);
