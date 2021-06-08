@@ -15,51 +15,51 @@ class MFTAnaSimTrack : public MFTAnaSimMCTrack
   ~MFTAnaSimTrack() = default;
   MFTAnaSimTrack& operator=(const MFTAnaSimTrack&) = default;
 
-  void setMCTrackID(Int_t id) { mMCTrackID = id; }
-  Int_t getMCTrackID() const { return mMCTrackID; }
+  void setMCTrackID(int id) { mMCTrackID = id; }
+  int getMCTrackID() const { return mMCTrackID; }
   
-  void setNDisks(Int_t nd) { mNDisks = nd; }
-  Int_t getNDisks() const { return mNDisks; }
+  void setNDisks(int nd) { mNDisks = nd; }
+  int getNDisks() const { return mNDisks; }
   
-  void setNLayers(Int_t nl) { mNLayers = nl; }
-  Int_t getNLayers() const { return mNLayers; }
+  void setNLayers(int nl) { mNLayers = nl; }
+  int getNLayers() const { return mNLayers; }
   
-  void setNHits(Int_t nh) { mNHits = nh; }
-  Int_t getNHits() const { return mNHits; }
+  void setNHits(int nh) { mNHits = nh; }
+  int getNHits() const { return mNHits; }
   
-  void setFirstHitIndex(Int_t ih) { mFirstHitIndex = ih; }
-  Int_t getFirstHitIndex() const { return mFirstHitIndex; }
+  void setFirstHitIndex(int ih) { mFirstHitIndex = ih; }
+  int getFirstHitIndex() const { return mFirstHitIndex; }
   
-  void setLastHitIndex(Int_t ih) { mLastHitIndex = ih; }
-  Int_t getLastHitIndex() const { return mLastHitIndex; }
+  void setLastHitIndex(int ih) { mLastHitIndex = ih; }
+  int getLastHitIndex() const { return mLastHitIndex; }
 
-  void setNClusters(Int_t nh) { mNClusters = nh; }
-  Int_t getNClusters() const { return mNClusters; }
+  void setNClusters(int nh) { mNClusters = nh; }
+  int getNClusters() const { return mNClusters; }
   
-  void setFirstClusterIndex(Int_t ih) { mFirstClusterIndex = ih; }
-  Int_t getFirstClusterIndex() const { return mFirstClusterIndex; }
+  void setFirstClusterIndex(int ih) { mFirstClusterIndex = ih; }
+  int getFirstClusterIndex() const { return mFirstClusterIndex; }
   
-  void setLastClusterIndex(Int_t ih) { mLastClusterIndex = ih; }
-  Int_t getLastClusterIndex() const { return mLastClusterIndex; }
+  void setLastClusterIndex(int ih) { mLastClusterIndex = ih; }
+  int getLastClusterIndex() const { return mLastClusterIndex; }
 
-  void setLayer(Int_t index, Int_t layer) { mLayers[index] = layer; }
-  Int_t getLayer(Int_t index) const { return mLayers[index]; }
+  void setLayer(int index, int layer) { mLayers[index] = layer; }
+  int getLayer(int index) const { return mLayers[index]; }
   
-  void setEvent(Int_t ev) { mEvent = ev; }
-  Int_t getEvent() const { return mEvent; }
+  void setEvent(int ev) { mEvent = ev; }
+  int getEvent() const { return mEvent; }
 
  private:
-  Int_t mEvent = 0;
-  Int_t mNDisks = 0;
-  Int_t mNLayers = 0;
-  Int_t mNHits = 0;
-  Int_t mFirstHitIndex = 0;
-  Int_t mLastHitIndex = 0;
-  Int_t mNClusters = 0;
-  Int_t mFirstClusterIndex = 0;
-  Int_t mLastClusterIndex = 0;
-  Int_t mMCTrackID = 0;
-  Int_t mLayers[o2::mft::constants::LayersNumber];
+  int mEvent = 0;
+  int mNDisks = 0;
+  int mNLayers = 0;
+  int mNHits = 0;
+  int mFirstHitIndex = 0;
+  int mLastHitIndex = 0;
+  int mNClusters = 0;
+  int mFirstClusterIndex = 0;
+  int mLastClusterIndex = 0;
+  int mMCTrackID = 0;
+  int mLayers[o2::mft::constants::LayersNumber];
 };
 
 };
