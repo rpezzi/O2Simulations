@@ -39,21 +39,38 @@ bool MFTAnaSim::initialize(int maxMCTracks)
   mHitTree->SetBranchAddress("MFTHit", &mHitVecP);
   // loading is per MC event
 
+  // pattern dictionary for the clusters
+  std::string dictfile = "MFTdictionary.bin";
+  std::ifstream file(dictfile.c_str());
+  if (file.good()) {
+    printf("Running with dictionary: %s \n", dictfile.c_str());
+    mTopoDict.readBinaryFile(dictfile);
+  } else {
+    printf("Can not run without dictionary !\n");
+    return false;
+  }
+  
   // clusters
   mClusTree->SetBranchAddress("MFTClusterComp", &mClusVecP);
   if (mClusTree->GetBranch("MFTClusterMCTruth")) {
     mClusTree->SetBranchAddress("MFTClusterMCTruth", &mClusLabels);
   } else {
     printf("No Monte-Carlo information in this file\n");
-    return kFALSE;
+    return false;
   }
+  // cluster patterns
   auto pattBranch = mClusTree->GetBranch("MFTClusterPatt");
   if (pattBranch) {
     pattBranch->SetAddress(&mClusPatternsP);
+  } else {
+    printf("No patterns!\n");
+    return false;
   }
   // loading is in a single vector (for all MC events)
   mClusTree->GetEntry(0);
   mNClusters = mClusVec.size();
+  mClustersCoord.resize(mNClusters);
+  extractClustersCoord();
 
   // reconstructed tracks, MFT standalone (SA)
   mTrackTree->SetBranchAddress("MFTTrack", &mTrackVecP);
@@ -61,7 +78,7 @@ bool MFTAnaSim::initialize(int maxMCTracks)
     mTrackTree->SetBranchAddress("MFTTrackMCTruth", &mTrackLabelsInp);
   } else {
     printf("No Monte-Carlo information in this file\n");
-    return kFALSE;
+    return false;
   }
   mTrackTree->SetBranchAddress("MFTTrackClusIdx", &mTrackExtClsVecP);
   // loading is in a single vector (for all MC events)
@@ -76,19 +93,9 @@ bool MFTAnaSim::initialize(int maxMCTracks)
   mMCTrackHasHitsInLayer = std::vector<std::array<bool, o2::mft::constants::LayersNumber>>(maxMCTracks, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0});
   mMaxMCTracks = maxMCTracks;
 
-  std::string dictfile = "MFTdictionary.bin";
-  std::ifstream file(dictfile.c_str());
-  if (file.good()) {
-    printf("Running with dictionary: %s \n", dictfile.c_str());
-    mTopoDict.readBinaryFile(dictfile);
-  } else {
-    printf("Can not run without dictionary !\n");
-    return kFALSE;
-  }
-  
   mAnaSimClusters.clear();	
 
-  return kTRUE;
+  return true;
 }
 
 //_____________________________________________________________________________
@@ -129,24 +136,24 @@ void MFTAnaSim::initEvent(int event, int nMCTracks, int particleSource)
 
   switch (particleSource) {
   case kPrimary:
-    mPrimary = kTRUE;
-    mSecondary = kFALSE;
-    mAll = kFALSE;
+    mPrimary = true;
+    mSecondary = false;
+    mAll = false;
     break;
   case kSecondary:
-    mPrimary = kFALSE;
-    mSecondary = kTRUE;
-    mAll = kFALSE;
+    mPrimary = false;
+    mSecondary = true;
+    mAll = false;
     break;
   case kAll:
-    mPrimary = kFALSE;
-    mSecondary = kFALSE;
-    mAll = kTRUE;
+    mPrimary = false;
+    mSecondary = false;
+    mAll = true;
     break;
   default:
-    mPrimary = kFALSE;
-    mSecondary = kFALSE;
-    mAll = kFALSE;
+    mPrimary = false;
+    mSecondary = false;
+    mAll = false;
     break;
   };
   
@@ -230,7 +237,7 @@ bool MFTAnaSim::doHits()
     mMCTrackHasHitsInLayer[trkID][mChipMapper.chip2Layer(chipID)] = true;
   }
   
-  return kTRUE;
+  return true;
 }
   
 //_____________________________________________________________________________
@@ -300,7 +307,7 @@ bool MFTAnaSim::doMCTracks()
     mAnaSimTracks.push_back(asTrack);
   }
   
-  return kTRUE;
+  return true;
 }
 
 //_____________________________________________________________________________
@@ -331,35 +338,22 @@ void MFTAnaSim::findMCTrackClusters(int trkID, int& firstIndex, int& lastIndex)
   o2::math_utils::Point3D<float> locC;
   MFTAnaSimCluster asCluster;
   auto pattIt = mClusPatternsP->cbegin();
-  for (int n_cls = 0; n_cls < mNClusters; n_cls++) {
-    auto cluster = mClusVec[n_cls];
-    auto& label = (mClusLabels->getLabels(n_cls))[0];
+  for (int i_cls = 0; i_cls < mNClusters; i_cls++) {
+    auto cluster = mClusVec[i_cls];
+    auto& label = (mClusLabels->getLabels(i_cls))[0];
     if (label.isNoise()) {
       continue;
     }
     label.get(clusTrkID, clusEvnID, clusSrcID, fake);
     if (clusTrkID != trkID) {
-	continue;
+      continue;
     }
-    auto chipID = cluster.getChipID(); 
-    auto pattID = cluster.getPatternID();
-    nPixels = 0;
-    if (pattID == o2::itsmft::CompCluster::InvalidPatternID || mTopoDict.isGroup(pattID)) {
-      o2::itsmft::ClusterPattern patt(pattIt);
-      locC = mTopoDict.getClusterCoordinates(cluster, patt, false);
-    } else {
-      locC = mTopoDict.getClusterCoordinates(cluster);
-      nPixels = mTopoDict.getNpixels(pattID);
-    }
-    // Transformation to the local --> global
-    auto gloC = mGeoManager->getMatrixL2G(chipID) * locC;
-    if (firstIndex < 0) {
-      firstIndex = mAnaSimClusters.size();
-    }
+    auto chipID = cluster.getChipID();
+    auto clsCoord = mClustersCoord.at(i_cls);
     asCluster.setSensorID(chipID);
-    asCluster.setX(gloC.X());
-    asCluster.setY(gloC.Y());
-    asCluster.setZ(gloC.Z());
+    asCluster.setX(clsCoord.xGlo);
+    asCluster.setY(clsCoord.yGlo);
+    asCluster.setZ(clsCoord.zGlo);
     mAnaSimClusters.push_back(asCluster);
     lastIndex = mAnaSimClusters.size() - 1;
   }
@@ -369,12 +363,12 @@ void MFTAnaSim::findMCTrackClusters(int trkID, int& firstIndex, int& lastIndex)
 void MFTAnaSim::countParticle(int pdgCode)
 {
   MCPart newPart;  
-  bool counted = kFALSE;
+  bool counted = false;
   for (int i = 0; i < mParticles.size(); i++) {
     auto& part = mParticles.at(i);
     if (part.mPDGCode == pdgCode) {
       part.mCount++;
-      counted = kTRUE;
+      counted = true;
       break;
     }
   }
@@ -423,27 +417,49 @@ bool MFTAnaSim::doSATracks()
       }
       clusLabel.get(trkID, evnID, srcID, fake);
       auto chipID = cluster.getChipID(); 
-      auto pattID = cluster.getPatternID();
-      //printf("Cluster %5d  chip %03d \n", i_cls, chipID);
-      nPixels = 0;
-      if (pattID != itsmft::CompCluster::InvalidPatternID) {
-	if (mTopoDict.isGroup(pattID)) {
-	  o2::itsmft::ClusterPattern patt(pattIt);
-	  locC = mTopoDict.getClusterCoordinates(cluster, patt, false);
-	} else {
-	  locC = mTopoDict.getClusterCoordinates(cluster);
-	  nPixels = mTopoDict.getNpixels(pattID);
-	}
-      } else {
-	o2::itsmft::ClusterPattern patt(pattIt);
-	locC = mTopoDict.getClusterCoordinates(cluster, patt);
-      }
-      // Transformation to the local --> global
-      auto gloC = mGeoManager->getMatrixL2G(chipID) * locC;
-      printf("Cluster %5d   chip ID %03d   evn %2d   mctrk %4d   x,y,z  %7.3f  %7.3f  %7.3f \n", i_cls, cluster.getChipID(), evnID, trkID, gloC.X(), gloC.Y(), gloC.Z());
+      auto clsCoord = mClustersCoord.at(clusEntry);
+      printf("Cluster %5d (%5d)  chip ID %03d   evn %2d   mctrk %4d   x,y,z  %7.3f  %7.3f  %7.3f \n", i_cls, clusEntry, chipID, evnID, trkID, clsCoord.xGlo, clsCoord.yGlo, clsCoord.zGlo);
     }
     iTrack++;
   }
 }
 
+//_____________________________________________________________________________
+void MFTAnaSim::extractClustersCoord()
+{
+  auto pattIt = mClusPatternsP->cbegin();
+  o2::itsmft::ClusterPattern patt(pattIt);
+  int clusSrcID, clusTrkID, clusEvnID, nPixels;
+  bool fake;
+  o2::math_utils::Point3D<float> locC;
+  for (int i_cls = 0; i_cls < mNClusters; i_cls++) {
+    auto cluster = mClusVec[i_cls];
+    auto chipID = cluster.getChipID(); 
+    auto pattID = cluster.getPatternID();
+    //printf("Extract cluster  %5d  %3d  %3d (%3d)  %1d \n", i_cls, chipID, pattID, o2::itsmft::CompCluster::InvalidPatternID, mTopoDict.isGroup(pattID)); 
+    nPixels = 0;
+    
+    if (pattID != o2::itsmft::CompCluster::InvalidPatternID) {
+      if (mTopoDict.isGroup(pattID)) {
+	locC = mTopoDict.getClusterCoordinates(cluster, patt);
+      } else {
+	locC = mTopoDict.getClusterCoordinates(cluster);
+	nPixels = mTopoDict.getNpixels(pattID);
+      }
+    } else {
+      o2::itsmft::ClusterPattern patt(pattIt);
+      locC = mTopoDict.getClusterCoordinates(cluster, patt, false);
+    }
+    
+    // Transformation to the local --> global
+    auto gloC = mGeoManager->getMatrixL2G(chipID) * locC;
+    auto& clsCoord = mClustersCoord.at(i_cls);
+    clsCoord.xGlo = gloC.X();
+    clsCoord.yGlo = gloC.Y();
+    clsCoord.zGlo = gloC.Z();
+    clsCoord.nPixels = nPixels;
+    //printf("Extract cluster  %5d  %3d  %3d (%3d)  %1d  %7.3f  %7.3f  %7.3f \n", i_cls, chipID, pattID, o2::itsmft::CompCluster::InvalidPatternID, mTopoDict.isGroup(pattID), clsCoord.xGlo, clsCoord.yGlo, clsCoord.zGlo); 
+  }
+}
+  
 }; // end namespace o2::mftana

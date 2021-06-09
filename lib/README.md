@@ -7,7 +7,7 @@ make
 ```
 
 ```bash
-root.exe -b -q MFTAna.C+
+root.exe -b -q MFTAna.C++
 ```
 
 ```bash

@@ -57,6 +57,7 @@ void MFTAna(const char *hitsFileName = "../tracking/31/o2sim_HitsMFT.root",
   
   // read the input trees and dimension internal vector containers
   if (!anaSim.initialize(maxMCTracks)) {
+    printf("MFTAnaSim::initialize returns false!\n");
     return;
   }
   
