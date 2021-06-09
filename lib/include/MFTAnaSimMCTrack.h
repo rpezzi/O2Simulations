@@ -96,7 +96,7 @@ class MFTAnaSimMCTrack
  private: 
   int mPDGCode = -1;
   std::string mPDGName = "";
-  bool mIsPrimary = kTRUE;
+  bool mIsPrimary = true;
   double mStartVertexCoordinatesX = 0.;
   double mStartVertexCoordinatesY = 0.;
   double mStartVertexCoordinatesZ = 0.;
