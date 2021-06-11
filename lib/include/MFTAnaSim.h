@@ -1,4 +1,6 @@
-/// Main class for the analysis of Muon Forward Tracker simulations
+/// @brief Main class for the analysis of Muon Forward Tracker simulations
+/// @details Class to create at the beginning of a steering macro:
+/// @details auto anaSim = o2::mftana::MFTAnaSim();
 
 #ifndef MFT_ANA_SIM
 #define MFT_ANA_SIM
@@ -47,7 +49,7 @@ class MFTAnaSim
   TTree* mClusTree = nullptr;   ///< Tree with clusters, set from the steering macro
   TTree* mTrackTree = nullptr;  ///< Tree with standalone reconstructed tracks, set from the steering macro
   
-  o2::mft::GeometryTGeo* mGeoManager;      ///< Manager of the MFT geometry
+  o2::mft::GeometryTGeo* mGeoManager;      ///< Manager of the MFT geometry, set from the steering macro
   o2::itsmft::ChipMappingMFT mChipMapper;  ///< Information on the MFT chip mapping
 
   bool initialize(int maxMCTracks);   ///< Global initialization for all events
