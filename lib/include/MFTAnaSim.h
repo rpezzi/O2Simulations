@@ -116,5 +116,7 @@ class MFTAnaSim
   
 };
 
+#include "../src/MFTAnaSim.cxx"
+
 #endif // MFT_ANA_SIM
 

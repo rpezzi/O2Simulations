@@ -1,8 +1,12 @@
 #if !defined(__CLING__) || defined(__ROOTCLING__)
 
-#include "include/MFTAnaSim.h"
-
 #include "SimulationDataFormat/MCEventHeader.h"
+#include "include/MFTAnaSim.h"
+#include "include/MFTAnaSimCluster.h"
+#include "include/MFTAnaSimHit.h"
+#include "include/MFTAnaSimTrack.h"
+
+#include "src/MFTAnaSimLinkDef.h"
 
 #endif
 

@@ -166,9 +166,16 @@ void MFTAnaSim::initEvent(int event, int nMCTracks, int particleSource)
 bool MFTAnaSim::doParticles()
 {
   mKineTree->GetEvent(mCurrEvent);
+  std::cout << " doParticles: mNMCTracks = " << mNMCTracks << std::endl;
+  int pdgCode;
+  const int stop = mNMCTracks;
+  // const int stop = 10;
+  for (int trkID = 0; trkID <= stop; trkID++) {
+    // while (++trkID < mNMCTracks) {
+    // std::cout << " Doing particle with trkID = " << trkID << " mNMCTracks = "
+    // << mNMCTracks << " stop = " << stop << std::endl; std::cout << " (trkID <=
+    // stop) = " <<  (trkID <=  stop ? "true" : "false") << std::endl;
 
-  int pdgCode, trkID = -1;
-  while (++trkID < mNMCTracks) {
     MCTrack* mcTrack =  &(mMCTrkVec)[trkID];
     if (!mAll) {
       if (mPrimary && !mcTrack->isPrimary()) {
@@ -189,10 +196,11 @@ bool MFTAnaSim::doParticles()
     if (TDatabasePDG::Instance()->GetParticle(pdgCode) == nullptr) {
       continue;
     }
-    //printf("MCTrack %d \n", trkID);
-    //printf("pdg code: %d \n", pdgCode);
-    //printf("name: %s \n", TDatabasePDG::Instance()->GetParticle(pdgCode)->GetName());
-    
+    printf("MCTrack %d \n", trkID);
+    printf("pdg code: %d \n", pdgCode);
+    printf("name: %s \n",
+           TDatabasePDG::Instance()->GetParticle(pdgCode)->GetName());
+
     countParticle(pdgCode);
     
     if (mCurrEvent == 0) {
@@ -202,8 +210,9 @@ bool MFTAnaSim::doParticles()
 	     TDatabasePDG::Instance()->GetParticle(pdgCode)->GetName(),
 	     mcTrack->isSecondary(),
 	     mcTrack->GetEnergy());
-    }    
+    }
   }
+  return true;
 }
 
 //_____________________________________________________________________________

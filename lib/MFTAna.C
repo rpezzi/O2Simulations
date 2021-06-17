@@ -1,31 +1,37 @@
 #if !defined(__CLING__) || defined(__ROOTCLING__)
 
 #include "include/MFTAnaSim.h"
+#include "include/MFTAnaSimCluster.h"
+#include "include/MFTAnaSimHit.h"
+#include "include/MFTAnaSimTrack.h"
 
 #include "SimulationDataFormat/MCEventHeader.h"
 #include "MFTBase/GeometryTGeo.h"
 
+#include "src/MFTAnaSimLinkDef.h"
+
 #endif
 
-void MFTAna(const char *hitsFileName = "../tracking/31/o2sim_HitsMFT.root",
-	    const char *kineFileName = "../tracking/31/o2sim_Kine.root",
-	    const char *clusFileName = "../tracking/31/mftclusters.root",
-	    const char *tracksFileName = "../tracking/31/mfttracks.root",
-	    const char *geomFileName = "../tracking/31/o2sim_geometry.root")
-{
+void MFTAna(const char *sim_path = "./") {
   enum ParticleSource {kPrimary, kSecondary, kAll};
-  
+
+  std::string hitsFileName = sim_path + std::string("/o2sim_HitsMFT.root");
+  std::string kineFileName = sim_path + std::string("/o2sim_Kine.root");
+  std::string clusFileName = sim_path + std::string("/mftclusters.root");
+  std::string tracksFileName = sim_path + std::string("/mfttracks.root");
+  std::string geomFileName = sim_path + std::string("/o2sim");
+
   // create the main analysis class
   auto anaSim = o2::mftana::MFTAnaSim();
-  
+
   // geometry manager
-  o2::base::GeometryManager::loadGeometry(geomFileName);
+  o2::base::GeometryManager::loadGeometry(geomFileName.c_str());
   auto gman = o2::mft::GeometryTGeo::Instance();
   gman->fillMatrixCache(o2::math_utils::bit2Mask(o2::math_utils::TransformType::L2G));
   anaSim.mGeoManager = gman;
   
   // kinematics (MC tracks, particles)
-  TFile kineFile(kineFileName);
+  TFile kineFile(kineFileName.c_str());
   TTree *kineTree = (TTree*)kineFile.Get("o2sim");
   o2::dataformats::MCEventHeader* eventHeader = nullptr;
   kineTree->SetBranchAddress("MCEventHeader.", &eventHeader);
@@ -41,17 +47,17 @@ void MFTAna(const char *hitsFileName = "../tracking/31/o2sim_HitsMFT.root",
   }
   
   // hits
-  TFile hitsFile(hitsFileName);
+  TFile hitsFile(hitsFileName.c_str());
   TTree* hitTree = (TTree*)hitsFile.Get("o2sim");
   anaSim.mHitTree = hitTree;
   
   // clusters
-  TFile clusFile(clusFileName);
+  TFile clusFile(clusFileName.c_str());
   TTree *clusTree = (TTree*)clusFile.Get("o2sim");
   anaSim.mClusTree = clusTree;
   
   // reconstructed tracks, MFT standalone (SA)
-  TFile tracksFile(tracksFileName);
+  TFile tracksFile(tracksFileName.c_str());
   TTree *trackTree = (TTree*)tracksFile.Get("o2sim");
   anaSim.mTrackTree = trackTree;
   

@@ -11,7 +11,11 @@ namespace o2::mftana
 class MFTAnaSimTrack : public MFTAnaSimMCTrack
 {
  public:
-  MFTAnaSimTrack();
+   MFTAnaSimTrack() {
+     for (int i = 0; i < o2::mft::constants::LayersNumber; i++) {
+       mLayers[i] = 0;
+     }
+   }
   ~MFTAnaSimTrack() = default;
   MFTAnaSimTrack& operator=(const MFTAnaSimTrack&) = default;
 
@@ -63,5 +67,7 @@ class MFTAnaSimTrack : public MFTAnaSimMCTrack
 };
 
 };
+
+//#include "../src/MFTAnaSimTrack.cxx"
 
 #endif // MFT_ANA_SIM_TRACK

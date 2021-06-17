@@ -111,4 +111,6 @@ class MFTAnaSimMCTrack
 
 };
 
+#include "../src/MFTAnaSimTrack.cxx"
+
 #endif // MFT_ANA_MC_TRACK
