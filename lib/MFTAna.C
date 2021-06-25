@@ -7,11 +7,11 @@
 
 #endif
 
-void MFTAna(const char *hitsFileName = "../tracking/31/o2sim_HitsMFT.root",
-	    const char *kineFileName = "../tracking/31/o2sim_Kine.root",
-	    const char *clusFileName = "../tracking/31/mftclusters.root",
-	    const char *tracksFileName = "../tracking/31/mfttracks.root",
-	    const char *geomFileName = "../tracking/31/o2sim_geometry.root")
+void MFTAna(const char *hitsFileName = "../tracking/36/o2sim_HitsMFT.root",
+	    const char *kineFileName = "../tracking/36/o2sim_Kine.root",
+	    const char *clusFileName = "../tracking/36/mftclusters.root",
+	    const char *tracksFileName = "../tracking/36/mfttracks.root",
+	    const char *geomFileName = "../tracking/36/o2sim_geometry.root")
 {
   enum ParticleSource {kPrimary, kSecondary, kAll};
   
@@ -32,14 +32,6 @@ void MFTAna(const char *hitsFileName = "../tracking/31/o2sim_HitsMFT.root",
   int nrEvents = kineTree->GetEntries();
   anaSim.mKineTree = kineTree;
   
-  // maximum MC tracks per event, from a scan of all events in the file
-  int nMCTracks, maxMCTracks = 0;
-  for (int event = 0; event < nrEvents ; event++) {
-    kineTree->GetEntry(event);
-    nMCTracks = eventHeader->getMCEventStats().getNKeptTracks();
-    maxMCTracks = std::max(maxMCTracks, nMCTracks);
-  }
-  
   // hits
   TFile hitsFile(hitsFileName);
   TTree* hitTree = (TTree*)hitsFile.Get("o2sim");
@@ -55,34 +47,34 @@ void MFTAna(const char *hitsFileName = "../tracking/31/o2sim_HitsMFT.root",
   TTree *trackTree = (TTree*)tracksFile.Get("o2sim");
   anaSim.mTrackTree = trackTree;
   
+  anaSim.setVerboseLevel(1);
+
   // read the input trees and dimension internal vector containers
-  if (!anaSim.initialize(maxMCTracks)) {
+  if (!anaSim.initialize()) {
     printf("MFTAnaSim::initialize returns false!\n");
     return;
   }
-  
+
   for (int event = 0; event < nrEvents ; event++) {
-    kineTree->GetEntry(event);
-    nMCTracks = eventHeader->getMCEventStats().getNKeptTracks();
-    printf("Analyze event %d with %d MC tracks.\n", event, nMCTracks);
+    //printf("Analyze event %d.\n", event);
     
-    anaSim.initEvent(event, nMCTracks, kSecondary);
-    
-    anaSim.doParticles();
-    
-    if (kTRUE || event == 0) {
-      auto particles = anaSim.getParticles();
-      printf("and %zu particle species.\n", particles.size());
-      for (auto& part : particles) {
-	printf("%6d   %16s   %5d \n", part.mPDGCode, part.mPDGName.c_str(), part.mCount);
-      }
-    }
+    anaSim.initEvent(event, kAll);
     
     anaSim.doHits();
+    anaSim.doParticles();
     anaSim.doMCTracks();
+    
     anaSim.finishEvent();
   }
   
+  if (false) {
+    auto particles = anaSim.getParticles();
+    printf("Particles %zu\n", particles.size());
+    for (auto& part : particles) {
+      printf("%6d   %16s   %5d   %3d \n", part.mPDGCode, part.mPDGName.c_str(), part.mCount, part.mEvent);
+    }
+  }
+    
   anaSim.doSATracks();
   
   anaSim.finish();
