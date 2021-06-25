@@ -8,6 +8,8 @@
 namespace o2::mftana
 {
 
+constexpr int SplitCluster = 4;
+
 class MFTAnaSimTrack : public MFTAnaSimMCTrack
 {
  public:
@@ -36,18 +38,27 @@ class MFTAnaSimTrack : public MFTAnaSimMCTrack
   void setNClusters(int nh) { mNClusters = nh; }
   int getNClusters() const { return mNClusters; }
   
-  void setFirstClusterIndex(int ih) { mFirstClusterIndex = ih; }
-  int getFirstClusterIndex() const { return mFirstClusterIndex; }
-  
-  void setLastClusterIndex(int ih) { mLastClusterIndex = ih; }
-  int getLastClusterIndex() const { return mLastClusterIndex; }
-
-  void setLayer(int index, int layer) { mLayers[index] = layer; }
-  int getLayer(int index) const { return mLayers[index]; }
-  
   void setEvent(int ev) { mEvent = ev; }
   int getEvent() const { return mEvent; }
 
+  void setLayer(int icluster, int layer) {
+    assert(icluster < o2::mft::constants::LayersNumber);
+    mLayers[icluster] = layer;
+  }
+  int getLayer(int icluster) const {
+    assert(icluster < o2::mft::constants::LayersNumber);
+    return mLayers[icluster];
+  }
+  
+  void setIntClusIndex(int icluster, int iclus) {
+    assert(icluster < (SplitCluster * o2::mft::constants::LayersNumber));
+    mIntClusIndex[icluster] = iclus;
+  }
+  int getIntClusIndex(int icluster) const {
+    assert(icluster < (SplitCluster * o2::mft::constants::LayersNumber));
+    return mIntClusIndex[icluster];
+  }
+  
  private:
   int mEvent = 0;
   int mNDisks = 0;
@@ -60,6 +71,7 @@ class MFTAnaSimTrack : public MFTAnaSimMCTrack
   int mLastClusterIndex = 0;
   int mMCTrackID = 0;
   int mLayers[o2::mft::constants::LayersNumber];
+  int mIntClusIndex[SplitCluster * o2::mft::constants::LayersNumber];
 };
 
 };

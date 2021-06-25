@@ -27,6 +27,9 @@
 namespace o2::mftana
 {
 
+using o2::itsmft::Hit;
+using o2::MCTrack;
+
 struct MCPart {
   //MCPart() = default;
   //~MCPart() = default;
@@ -52,18 +55,20 @@ class MFTAnaSim
   o2::mft::GeometryTGeo* mGeoManager;      ///< Manager of the MFT geometry, set from the steering macro
   o2::itsmft::ChipMappingMFT mChipMapper;  ///< Information on the MFT chip mapping
 
-  bool initialize(int maxMCTracks);   ///< Global initialization for all events
-  void initEvent(int event, int nMCTracks, int particleSource = 0); ///< Event initialization
-  bool doParticles();   ///< Extract information of all particles generated in one event, may select primaries and/or secondaries
-  bool doHits();   ///< Count the hits per layer and disk
+  bool initialize();   ///< Global initialization for all events
+  void initEvent(int event, int particleSource = 2); ///< Event initialization
+  bool trackHasHits(int trkID);   ///< Check if a track (by its MC ID) has hits in the detector
+  bool doParticles();   ///< Extract information of all particles generated in one event, which left hits in the MFT; may select primaries and/or secondaries
+  bool doHits();   ///< Mark MC tracks with hits per layer and per disk
   bool doMCTracks();   ///< Extract information of the Monte-Carlo tracks in a vector of MFTAnaSimTrack
   bool doSATracks();   ///< Extract information of the standalone reconstructed tracks in a vector of MFTAnaSimSATrack
   void finishEvent();   ///< Called after each event
   void finish();   ///< Called at the end
   void findMCTrackHits(int trkID, int& firstIndex, int& lastIndex);   ///< Return the index range in the vector of all extracted hits (MFTAnaSimHit) for a given MC track
-  void findMCTrackClusters(int trkID, int& firstIndex, int& lastIndex);   ///< Return the index range in the vector of all extracted clusters (MFTAnaSimCluster) for a given MC track
+  void findMCTrackClusters(MFTAnaSimTrack& asTrack);   ///< Associate indexes in the vector of MFTAnsSimCluster to this MC track
   void setVerboseLevel(int vl) { mVerboseLevel = vl; }
-  const std::vector<MCPart>& getParticles() { return mParticles; }   ///< Return the vector of (MCPart) extracted particles in the event
+  const std::vector<MCPart>& getParticles() { return mParticles; }   ///< Return the vector of (MCPart) extracted particles from all events
+  const std::vector<MFTAnaSimTrack>& getSimTracks() { return mAnaSimTracks; } ///< Return the vector of (MFTAnaSimTrack) extracted MC tracks from all events
 
   struct ClusterCoord {
     float xGlo = 0.;
@@ -75,9 +80,9 @@ class MFTAnaSim
  private:
   bool mPrimary = true, mSecondary = false, mAll = false;
   enum ParticleSource {kPrimary, kSecondary, kAll};
-  void filterPDGCode(int& pdgCode);   ///< Skip some PDG codes
-  void countParticle(int pdgCode);   ///< Count the particle species and store in a vector of MCPart
-  void extractClustersCoord();
+  bool filterPDGCode(int pdgCode);   ///< Skip some PDG codes
+  void countParticle(int pdgCode, int currEvent);   ///< Count the particle species and store in a vector of MCPart
+  void extractClusters();   ///< Extract the clusters in a vector of MFTAnsSimCluster
   
   std::vector<o2::MCTrack> mMCTrkVec, *mMCTrkVecP = &mMCTrkVec;   ///< Vector of extracted MCTrack
   std::vector<o2::itsmft::Hit> mHitVec, *mHitVecP = &mHitVec;   ///< Vector of hits
@@ -94,6 +99,7 @@ class MFTAnaSim
   std::vector<MFTAnaSimTrack> mAnaSimTracks;   ///< Vector with extracted MC tracks
   std::vector<MFTAnaSimCluster> mAnaSimClusters;   ///< Vector with clusters associated to MFTAnaSimTrack
   std::vector<MFTAnaSimHit> mAnaSimHits;   ///< Vector with hits associated to MFTAnaSimTrack
+  std::vector<MFTAnaSimSATrack> mAnaSimSATracks;   ///< Vector with standalone reconstructed tracks
 
   o2::itsmft::TopologyDictionary mTopoDict;   ///< Dictionary for the cluster topologies
 
@@ -104,15 +110,47 @@ class MFTAnaSim
   TTree* mOutTree1 = nullptr;   ///< Tree of MFTAnaSimTrack in the output file
   TTree* mOutTree2 = nullptr;   ///< Tree of MFTAnaSimHit in the output file
   TTree* mOutTree3 = nullptr;   ///< Tree of MFTAnaSimCluster in the output file 
+  TTree* mOutTree4 = nullptr;   ///< Tree of MFTAnaSimSATrack in the output file
 
   int mCurrEvent = 0;     ///< Index of the current event
   int mNMCTracks = 0;     ///< Number of MC tracks in event
-  int mNSATracks = 0;     ///< Number of standalone reconstructed tracks for all events in the input file
+  int mNMCTracksWHits = 0;   ///< Number of MC tracks in event with hits
+  int mNSATracks = 0;     ///< Number of standalone reconstructed tracks from all events in the input file
   int mMaxMCTracks = 0;   ///< Maximum number of MC tracks per event
   int mNHitsInEvent = 0;  ///< Number of hits in event
-  int mNClusters = 0;     ///< Number of clusters for all events in the input file
+  int mNClusters = 0;     ///< Number of clusters from all events in the input file
   int mVerboseLevel = 0;
 };
+
+//_____________________________________________________________________________
+inline bool MFTAnaSim::trackHasHits(int trkID)
+{
+  for (int i_hit = 0; i_hit < mNHitsInEvent; i_hit++) {
+    Hit* hitp = &(mHitVec).at(i_hit);
+    if (hitp->GetTrackID() == trkID) {
+      return true;
+    }
+  }
+  return false;
+}
+ 
+//_____________________________________________________________________________
+inline bool MFTAnaSim::filterPDGCode(int pdgCode)
+{
+  // skip reggeon and pomeron
+  if (abs(pdgCode) == 110 || abs(pdgCode) == 990) {
+    return false;
+  }
+  // diffractive states
+  if (pdgCode > 9900000) {
+    return false;
+  }
+  // nuclear code
+  if (abs(pdgCode) > 1000000000) {
+    return false;
+  }
+  return true;
+}
   
 };
 

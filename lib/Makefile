@@ -6,6 +6,8 @@ SW_ROOT=/home/vulpescu/alice/sw/ubuntu1804_x86-64
 #CXXFLAGS=-O2 -Wall -fPIC -pthread -std=c++17 -m64 -I${SW_ROOT}/ROOT/v6-20-08-alice1-6/include
 CXXFLAGS=-Wall -fPIC -std=c++17 -I${SW_ROOT}/ROOT/v6-20-08-alice1-6/include
 
+CXXFLAGS+= -g
+
 all: libMFTAnaSim.so
 
 DictMFTAnaSim.cxx: $(HEADERS) src/MFTAnaSimLinkDef.h

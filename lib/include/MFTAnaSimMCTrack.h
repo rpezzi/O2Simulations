@@ -86,14 +86,17 @@ class MFTAnaSimMCTrack
   
   void setMotherTrackId(int trkid) { mMotherTrackId = trkid; }
   int getMotherTrackId() const { return mMotherTrackId; }
+
   void setSecondMotherTrackId(int trkid) { mSecondMotherTrackId = trkid; }
   int getSecondMotherTrackId() const { return mSecondMotherTrackId; }
+
   void setFirstDaughterTrackId(int trkid) { mFirstDaughterTrackId = trkid; }
   int getFirstDaughterTrackId() const { return mFirstDaughterTrackId; }
+
   void setLastDaughterTrackId(int trkid) { mLastDaughterTrackId = trkid; }
   int getLastDaughterTrackId() const { return mLastDaughterTrackId; }
 
- private: 
+ private:
   int mPDGCode = -1;
   std::string mPDGName = "";
   bool mIsPrimary = true;
