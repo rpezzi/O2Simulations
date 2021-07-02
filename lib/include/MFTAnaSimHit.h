@@ -25,10 +25,10 @@ class MFTAnaSimHit
   int getEvent() const { return mEvent; }
 
  private:
-  int mEvent = 0;
-  double mX = 0.;
-  double mY = 0.;
-  double mZ = 0.;
+  int mEvent = 0;   ///< ID of the event in which this hit was produced
+  double mX = 0.;   ///< Hit x global coordinate
+  double mY = 0.;   ///< Hit y global coordinate
+  double mZ = 0.;   ///< Hit z global coordinate
 };
 
 };
