@@ -97,15 +97,15 @@ class MFTAnaSimMCTrack
   int getLastDaughterTrackId() const { return mLastDaughterTrackId; }
 
  private:
-  int mPDGCode = -1;
-  std::string mPDGName = "";
-  bool mIsPrimary = true;
-  double mStartVertexCoordinatesX = 0.;
-  double mStartVertexCoordinatesY = 0.;
-  double mStartVertexCoordinatesZ = 0.;
-  double mStartVertexMomentumX = 0.;
-  double mStartVertexMomentumY = 0.;
-  double mStartVertexMomentumZ = 0.;
+  int mPDGCode = -1;   ///< PDG particle code
+  std::string mPDGName = "";   ///< PDG particle name
+  bool mIsPrimary = true;   ///< Flag for primary/secondary particle
+  double mStartVertexCoordinatesX = 0.;   ///< Particle vertex x coordinate
+  double mStartVertexCoordinatesY = 0.;   ///< Particle vertex y coordinate
+  double mStartVertexCoordinatesZ = 0.;   ///< Particle vertex z coordinate
+  double mStartVertexMomentumX = 0.;   ///< Particle x-momentum at vertex
+  double mStartVertexMomentumY = 0.;   ///< Particle y-momentum at vertex
+  double mStartVertexMomentumZ = 0.;   ///< Particle z-momentum at vertex
   int mMotherTrackId = -1;
   int mSecondMotherTrackId = -1;
   int mFirstDaughterTrackId = -1;

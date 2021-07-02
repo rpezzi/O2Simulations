@@ -28,14 +28,18 @@ class MFTAnaSimCluster : public o2::mft::Cluster
   void setLayer(int layer) { mLayer = layer; }
   int getLayer() const { return mLayer; }
 
+  void setID(int id) { mID = id; }
+  int getID() const { return mID; }
+
   void print() const;
   
  private:
-  bool mIsNoise = true;
-  int mEvent = -1;
-  int mMCTrackID = -1;
-  int mNPixels = 0;
-  int mLayer = -1;
+  bool mIsNoise = true;   ///< True if the cluster is from noise digits
+  int mEvent = -1;   ///< Event ID to which belongs the MC track which contributed to this cluster
+  int mMCTrackID = -1;   ///< ID of the MC track which contributed to this clusters
+  int mNPixels = 0;   ///< Number of pixels in the cluster
+  int mLayer = -1;   ///< Layer ID
+  int mID = -1;   ///< Internal ID of the cluster
 };
 
 //_____________________________________________________________________________

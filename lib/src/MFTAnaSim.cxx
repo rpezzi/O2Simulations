@@ -3,6 +3,10 @@
 #include "DataFormatsITSMFT/TopologyDictionary.h"
 #include "MathUtils/Cartesian.h"
 
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
 namespace o2::mftana
 {
 
@@ -104,8 +108,9 @@ bool MFTAnaSim::initialize()
     printf("Number of clusters %d \n", mNClusters);
   }
   mAnaSimClusters.reserve(mNClusters);
+  mAnaSimClustersSort.reserve(mNClusters);
   extractClusters();
-
+  
   // reconstructed tracks, MFT standalone (SA)
   mTrackTree->SetBranchAddress("MFTTrack", &mTrackVecP);
   if (mTrackTree->GetBranch("MFTTrackMCTruth")) {
@@ -122,6 +127,12 @@ bool MFTAnaSim::initialize()
     printf("Number of SA reconstructed tracks: %d \n", mNSATracks);
   }
   mAnaSimSATracks.reserve(mNSATracks);
+
+  mEventClusterRange.reserve(mNEvents);
+  
+#ifdef _OPENMP
+  omp_set_num_threads(mNThreads);
+#endif
   
   return true;
 }
@@ -279,12 +290,15 @@ bool MFTAnaSim::doHits()
 //_____________________________________________________________________________
 bool MFTAnaSim::doMCTracks()
 {
+  mEvnClsIndexMin = mEventClusterRange.at(mCurrEvent).first;
+  mEvnClsIndexMax = mEventClusterRange.at(mCurrEvent).second;
   MFTAnaSimTrack asTrack;
   asTrack.setEvent(mCurrEvent);
   int pdgCode, nMFTHasLayers, nMFTHasDisks;
   int firstHit = -1, lastHit = -1;
   int firstCluster = -1, lastCluster = -1;
-  int nMCTracksWHits = 0;
+  int nMCTracksWClusters = 0;
+  int nextEvnIndex = 0;
   for (int trkID = 0; trkID < mNMCTracks; trkID++) {
     if (!trackHasHits(trkID)) {
       continue;
@@ -326,12 +340,14 @@ bool MFTAnaSim::doMCTracks()
     
     // associate clusters
     findMCTrackClusters(asTrack);
+    if (asTrack.getNClusters() > 0) {
+      nMCTracksWClusters++;
+    }
 
     mAnaSimTracks.push_back(asTrack);
-    nMCTracksWHits++;
   }
   if (mVerboseLevel > 0) {
-    printf("MFTAnaSim::doMCTracks found %d tracks with hits in event %d \n", nMCTracksWHits, mCurrEvent);
+    printf("MFTAnaSim::doMCTracks found %d tracks with clusters in event %d \n", nMCTracksWClusters, mCurrEvent);
   }
   
   return true;
@@ -362,18 +378,33 @@ void MFTAnaSim::findMCTrackHits(int trkID, int& firstIndex, int& lastIndex)
 //_____________________________________________________________________________
 void MFTAnaSim::findMCTrackClusters(MFTAnaSimTrack& asTrack)
 {
-  int nClusters = 0;
-  for (int i_cls = 0; i_cls < mNClusters; i_cls++) {
-    auto& asCluster = mAnaSimClusters.at(i_cls);
-    if (asCluster.getEvent() != asTrack.getEvent() || asCluster.getMCTrackID() != asTrack.getMCTrackID()) {
+  if (mVerboseLevel > 1) {
+    printf("findMCTrackClusters in range   %d   %d \n", mEvnClsIndexMin, mEvnClsIndexMax);
+  }
+  int i_cls, nClusters = 0;
+  std::vector<std::pair<int, float>> clusIndexZ;
+  for (i_cls = mEvnClsIndexMin; i_cls <= mEvnClsIndexMax; i_cls++) {
+    auto& asCluster = mAnaSimClustersSort.at(i_cls);
+    if (asCluster.getMCTrackID() != asTrack.getMCTrackID()) {
       continue;
     }
-    asCluster.print();
-    assert(nClusters < (o2::mftana::SplitCluster * o2::mft::constants::LayersNumber));
-    asTrack.setIntClusIndex(nClusters, i_cls);
+    assert(nClusters < (o2::mftana::MCSplitCluster * o2::mft::constants::LayersNumber));
+    clusIndexZ.push_back(std::pair<int, float>(i_cls, asCluster.getZ()));
     nClusters++;
   }
   asTrack.setNClusters(nClusters);
+  // sort in decreasing "z" position of the clusters
+  sort(clusIndexZ.begin(), clusIndexZ.end(), [](std::pair<int, float>& clsiz1, std::pair<int, float>& clsiz2) { return (clsiz1.second > clsiz2.second); });
+  i_cls = 0;
+  for (auto& clsiz : clusIndexZ) {
+    auto& asCluster = mAnaSimClustersSort.at(clsiz.first);
+    if (mVerboseLevel > 1) {
+      asCluster.print();
+    }
+    asTrack.setIntClusIndex(i_cls, asCluster.getID());
+    i_cls++;
+  }
+
 }
 
 //_____________________________________________________________________________
@@ -412,7 +443,8 @@ bool MFTAnaSim::doSATracks()
   auto pattIt = mClusPatternsP->cbegin();
   
   int iTrack = 0;
-  for (auto &track : mTrackVec) {
+  for (auto& track : mTrackVec) {
+    asSATrack.copy(track);
     auto trkX = track.getX();
     auto trkY = track.getY();
     auto trkZ = track.getZ();
@@ -424,10 +456,10 @@ bool MFTAnaSim::doSATracks()
     auto trkOutY = outParam.getY();
     auto trkOutZ = outParam.getZ();
     auto trkID = trkLabel.getTrackID();
-    auto nPoint = track.getNumberOfPoints();
-    asSATrack.setNPoints(nPoint);
+    auto nPoints = track.getNumberOfPoints();
+    asSATrack.setNPoints(nPoints);
     if (mVerboseLevel > 0) {
-      printf("Track %3d   isCA %1d   x,y,z-in  %7.3f  %7.3f  %7.3f  x,y,z-out  %7.3f  %7.3f  %7.3f   ev %2d   label %4d   points %d \n", iTrack, track.isCA(), trkX, trkY, trkZ, trkOutX, trkOutY, trkOutZ, eventID, trkID, nPoint);
+      printf("Track %3d   isCA %1d   x,y,z-in  %7.3f  %7.3f  %7.3f  x,y,z-out  %7.3f  %7.3f  %7.3f   ev %2d   label %4d   points %d \n", iTrack, track.isCA(), trkX, trkY, trkZ, trkOutX, trkOutY, trkOutZ, eventID, trkID, nPoints);
     }
     for (int j = 0; j < o2::mft::constants::DisksNumber; j++) {
       hasHitsInDisk[j] = false;
@@ -437,11 +469,11 @@ bool MFTAnaSim::doSATracks()
     }
     
     auto offset = track.getExternalClusterIndexOffset();
-    for (int i_cls = 0; i_cls < nPoint; i_cls++) {
+    for (int i_cls = 0; i_cls < nPoints; i_cls++) {
       auto clusEntry = mTrackExtClsVec[offset + i_cls];
       auto cluster = mAnaSimClusters.at(clusEntry);
       asSATrack.setLayer(i_cls, cluster.getLayer());
-      asSATrack.setEventID(i_cls, cluster.getEvent());
+      asSATrack.setEvent(i_cls, cluster.getEvent());
       asSATrack.setMCTrackID(i_cls, cluster.getMCTrackID());
       asSATrack.setIntClusIndex(i_cls, clusEntry);
       hasHitsInLayer[cluster.getLayer()] = true;
@@ -460,6 +492,7 @@ bool MFTAnaSim::doSATracks()
     }
     asSATrack.setNDisks(nDisks);
     asSATrack.setNLayers(nLayers);
+
     mAnaSimSATracks.push_back(asSATrack);
     
     iTrack++;
@@ -472,11 +505,12 @@ void MFTAnaSim::extractClusters()
 {
   auto pattIt = mClusPatternsP->cbegin();
   o2::itsmft::ClusterPattern patt(pattIt);
-  int clusSrcID, clusTrkID, clusEvnID, nPixels;
+  int i_cls, clusSrcID, clusTrkID, clusEvnID, nPixels;
   bool fake;
   o2::math_utils::Point3D<float> locC;
   MFTAnaSimCluster asCluster;
-  for (int i_cls = 0; i_cls < mNClusters; i_cls++) {
+  for (i_cls = 0; i_cls < mNClusters; i_cls++) {
+    asCluster.setID(i_cls);
     auto cluster = mClusVec[i_cls];
     auto chipID = cluster.getChipID(); 
     asCluster.setSensorID(chipID);
@@ -490,6 +524,7 @@ void MFTAnaSim::extractClusters()
       asCluster.setIsNoise(false);
       label.get(clusTrkID, clusEvnID, clusSrcID, fake);
     }
+    
     asCluster.setEvent(clusEvnID);
     asCluster.setMCTrackID(clusTrkID);
     auto pattID = cluster.getPatternID();
@@ -511,9 +546,98 @@ void MFTAnaSim::extractClusters()
     asCluster.setY(gloC.Y());
     asCluster.setZ(gloC.Z());
     asCluster.setNPixels(nPixels);
-    //printf("Extract cluster  %5d  %3d  %3d (%3d)  %1d  %7.3f  %7.3f  %7.3f \n", i_cls, chipID, pattID, o2::itsmft::CompCluster::InvalidPatternID, mTopoDict.isGroup(pattID), gloC.X(), gloC.Y(), gloC.Z()); 
+    if (mVerboseLevel > 3) {
+      printf("Extract cluster  %5d  %3d  %3d (%3d)  %1d  %7.3f  %7.3f  %7.3f event %d \n", i_cls, chipID, pattID, o2::itsmft::CompCluster::InvalidPatternID, mTopoDict.isGroup(pattID), gloC.X(), gloC.Y(), gloC.Z(), clusEvnID);
+    }
     mAnaSimClusters.push_back(asCluster);
+    // for attaching to MC tracks
+    if (clusTrkID >= 0) {
+      mAnaSimClustersSort.push_back(asCluster);
+    }
   }
+
+  // sort the cluster in event ID incfreasing order (starting with noise)
+  sort(mAnaSimClustersSort.begin(), mAnaSimClustersSort.end(), [](MFTAnaSimCluster& cls1, MFTAnaSimCluster& cls2) {
+      return (cls1.getEvent() < cls2.getEvent()); });
+  // and calculate the index ranges for the MC tracks
+  int devn, minClsIndex, maxClsIndex, prevEvnID = -1;
+  int nClustersSort = mAnaSimClustersSort.size();
+  for (i_cls = 0; i_cls < nClustersSort; i_cls++) {
+    auto& asCluster = mAnaSimClustersSort.at(i_cls);
+    clusEvnID = asCluster.getEvent();
+    if (clusEvnID > prevEvnID) {
+      if (prevEvnID < 0) {
+	minClsIndex = i_cls;
+	prevEvnID = clusEvnID;
+      } else {
+	// events without clusters
+	devn = clusEvnID - prevEvnID - 1;
+	for (int ievn = 0; ievn < devn; ievn++) {
+	  if (mVerboseLevel > 1) {
+	    printf("extractClusters evn %d cls range   %d   %d \n", (prevEvnID + ievn), 0, -1);
+	  }
+	  mEventClusterRange.push_back(std::pair(0, -1));
+	  prevEvnID++;
+	}
+	maxClsIndex = i_cls - 1;
+	if (mVerboseLevel > 1) {
+	  printf("extractClusters evn %d cls range   %d   %d \n", prevEvnID, minClsIndex, maxClsIndex);
+	}
+	mEventClusterRange.push_back(std::pair(minClsIndex, maxClsIndex));
+	minClsIndex = i_cls;
+	prevEvnID = clusEvnID;
+      }
+    }
+  }
+  maxClsIndex = i_cls - 1;
+  if (mVerboseLevel > 1) {
+    printf("extractClusters evn %d cls range   %d   %d \n", prevEvnID, minClsIndex, maxClsIndex);
+  }
+  mEventClusterRange.push_back(std::pair(minClsIndex, maxClsIndex));
 }
   
+//_____________________________________________________________________________
+void MFTAnaSim::linkTracks()
+{
+#ifdef _OPENMP
+  int thread_nr, n_threads, thread_tracks, thread_start;
+  int nMCTracks = mAnaSimTracks.size();
+#pragma omp parallel default(shared) private(thread_nr, n_threads, thread_tracks, thread_start)
+  {
+    thread_nr = omp_get_thread_num();
+    n_threads =  omp_get_num_threads();
+    thread_tracks = nMCTracks / n_threads;
+    thread_start = thread_nr * thread_tracks;
+    if (thread_nr == (n_threads - 1)) {
+      thread_tracks = nMCTracks - thread_start;
+    }
+    for (int iMCTrack = thread_start; iMCTrack < (thread_start + thread_tracks); iMCTrack++) {
+      auto& mcTrack = mAnaSimTracks.at(iMCTrack);
+      for (auto iSATrack = 0; iSATrack < mAnaSimSATracks.size(); iSATrack++) {
+	auto& saTrack = mAnaSimSATracks.at(iSATrack);
+	for (int ip = 0; ip < saTrack.getNPoints(); ip++) {
+	  if (saTrack.getEvent(ip) == mcTrack.getEvent() && saTrack.getMCTrackID(ip) == mcTrack.getMCTrackID()) {
+	    mcTrack.addIntSATrackIndex(iSATrack);
+	    saTrack.addIntMCTrackIndex(mcTrack.getEvent(), iMCTrack);
+	  }
+	}
+      }
+    }
+  }
+#else
+  for (auto iMCTrack = 0; iMCTrack < mAnaSimTracks.size(); iMCTrack++) {
+    auto& mcTrack = mAnaSimTracks.at(iMCTrack);
+    for (auto iSATrack = 0; iSATrack < mAnaSimSATracks.size(); iSATrack++) {
+      auto& saTrack = mAnaSimSATracks.at(iSATrack);
+      for (int ip = 0; ip < saTrack.getNPoints(); ip++) {
+	if (saTrack.getEvent(ip) == mcTrack.getEvent() && saTrack.getMCTrackID(ip) == mcTrack.getMCTrackID()) {
+	  mcTrack.addIntSATrackIndex(iSATrack);
+	  saTrack.addIntMCTrackIndex(mcTrack.getEvent(), iMCTrack);
+	}
+      }
+    }
+  }
+#endif // _OPENMP
+}
+
 }; // end namespace o2::mftana

@@ -1,5 +1,6 @@
-SOURCES=src/MFTAnaSim.cxx src/MFTAnaSimTrack.cxx
-HEADERS=include/MFTAnaSim.h include/MFTAnaSimTrack.h 
+SOURCES=src/MFTAnaSim.cxx src/MFTAnaSimTrack.cxx src/MFTAnaSimSATrack.cxx
+
+HEADERS=include/MFTAnaSim.h include/MFTAnaSimHit.h include/MFTAnaSimCluster.h include/MFTAnaSimTrack.h include/MFTAnaSimMCTrack.h include/MFTAnaSimSATrack.h 
 
 SW_ROOT=/home/vulpescu/alice/sw/ubuntu1804_x86-64
 
@@ -7,6 +8,7 @@ SW_ROOT=/home/vulpescu/alice/sw/ubuntu1804_x86-64
 CXXFLAGS=-Wall -fPIC -std=c++17 -I${SW_ROOT}/ROOT/v6-20-08-alice1-6/include
 
 CXXFLAGS+= -g
+CXXFLAGS+= -fopenmp
 
 all: libMFTAnaSim.so
 

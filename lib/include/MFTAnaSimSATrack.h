@@ -1,13 +1,18 @@
 #ifndef MFT_ANA_SA_TRACK
 #define MFT_ANA_SA_TRACK
 
+#include "MFTBase/Constants.h"
+#include "DataFormatsMFT/TrackMFT.h"
+
 namespace o2::mftana
 {
 
-class MFTAnaSimSATrack 
+constexpr int SASplitCluster = 4;   ///< Maximum split of a cluster with the same MC track ID
+
+class MFTAnaSimSATrack : public o2::mft::TrackMFT
 {
  public:
-  MFTAnaSimSATrack() = default;
+  MFTAnaSimSATrack();
   ~MFTAnaSimSATrack() = default;
   MFTAnaSimSATrack& operator=(const MFTAnaSimSATrack&) = default;
 
@@ -35,11 +40,11 @@ class MFTAnaSimSATrack
     return mIntClusIndex[ipoint];
   }
   
-  void setEventID(int ipoint, int evnID) {
+  void setEvent(int ipoint, int evnID) {
     assert(ipoint < o2::mft::constants::LayersNumber);
     mEventID[ipoint] = evnID;
   }
-  int getEventID(int ipoint) const {
+  int getEvent(int ipoint) const {
     assert(ipoint < o2::mft::constants::LayersNumber);
     return mEventID[ipoint];
   }
@@ -53,15 +58,58 @@ class MFTAnaSimSATrack
     return mMCTrackID[ipoint];
   }
 
+  void copy(o2::mft::TrackMFT& track);
+  
+  int getNMCTracks() const { return mNMCTracks; }
+  
+  void addIntMCTrackIndex(int evn, int id);
+  
+  int getIntMCTrackEvent(int i) const {
+    assert(i < (SASplitCluster * o2::mft::constants::LayersNumber));
+    return mIntMCTrackEvent[i];
+  }
+  
+  int getIntMCTrackIndex(int i) const {
+    assert(i < (SASplitCluster * o2::mft::constants::LayersNumber));
+    return mIntMCTrackIndex[i];
+  }
+  
+  int getIntMCTrackMult(int i) const {
+    assert(i < (SASplitCluster * o2::mft::constants::LayersNumber));
+    return mIntMCTrackMult[i];
+  }
+  
  private: 
-  int mNDisks = 0;
-  int mNLayers = 0;
-  int mNPoints = 0;
-  int mLayers[o2::mft::constants::LayersNumber];
-  int mIntClusIndex[o2::mft::constants::LayersNumber];
-  int mEventID[o2::mft::constants::LayersNumber];
-  int mMCTrackID[o2::mft::constants::LayersNumber];
+  int mNDisks = 0;   ///< Number of MFT disks
+  int mNLayers = 0;   ///< Number of MFT layers
+  int mNPoints = 0;   ///< Number of points in the track
+  int mLayers[o2::mft::constants::LayersNumber];   ///< ID of the layers
+  int mIntClusIndex[o2::mft::constants::LayersNumber];   ///< Internal index for the attached clusters
+  int mEventID[o2::mft::constants::LayersNumber];   ///< ID of the events to which the clusters belong
+  int mMCTrackID[o2::mft::constants::LayersNumber];   ///< ID of the MC tracks which contribute to the points
+  int mIntMCTrackEvent[SASplitCluster * o2::mft::constants::LayersNumber];   ///< List of the event IDs which contribute with MC tracks
+  int mIntMCTrackIndex[SASplitCluster * o2::mft::constants::LayersNumber];   ///< List of MC track indexes which contribute with clusters to this SA track
+  int mIntMCTrackMult[SASplitCluster * o2::mft::constants::LayersNumber];   ///< Multiplicity of MC track indexes which contribute with clusters to this SA track
+  int mNMCTracks = 0;   ///< Number of MC tracks which contribute with clusters to this SA track
 };
+
+//_____________________________________________________________________________
+inline void MFTAnaSimSATrack::addIntMCTrackIndex(int evn, int id)
+{
+  int i;
+  for (i = 0; i < mNMCTracks; i++) {
+    assert(i < (SASplitCluster * o2::mft::constants::LayersNumber));
+    if (mIntMCTrackEvent[i] == evn && mIntMCTrackIndex[i] == id ) {
+      mIntMCTrackMult[i]++;
+      return;
+    }
+  }
+  assert(i < (SASplitCluster * o2::mft::constants::LayersNumber));
+  mIntMCTrackEvent[i] = evn;
+  mIntMCTrackIndex[i] = id;
+  mIntMCTrackMult[i]++;
+  mNMCTracks++;
+}
 
 };
 
