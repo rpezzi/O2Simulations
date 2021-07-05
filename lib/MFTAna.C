@@ -10,24 +10,27 @@
 #endif
 
 //_____________________________________________________________________________
-void MFTAna(std::string prefix = "../tracking/36/", 
+void MFTAna(std::string prefix = "", 
 	    std::string hitsFileName = "o2sim_HitsMFT.root",
 	    std::string kineFileName = "o2sim_Kine.root",
 	    std::string clusFileName = "mftclusters.root",
 	    std::string tracksFileName = "mfttracks.root",
-	    std::string geomFileName = "o2sim_geometry.root")
+	    std::string geomFileName = "o2sim_geometry.root",
+	    std::string dictFileName = "MFTdictionary.bin")
 {
   hitsFileName = prefix + hitsFileName;
   kineFileName = prefix + kineFileName;
   clusFileName = prefix + clusFileName;
   tracksFileName = prefix + tracksFileName;
   geomFileName = prefix + geomFileName;
+  dictFileName = prefix + dictFileName;
   printf("Using: \n");
   printf("%s \n", hitsFileName.data());
   printf("%s \n", kineFileName.data());
   printf("%s \n", clusFileName.data());
   printf("%s \n", tracksFileName.data());
   printf("%s \n", geomFileName.data());
+  printf("%s \n", dictFileName.data());
 
   struct timeval tvStart, tvEnd;
 
@@ -36,7 +39,9 @@ void MFTAna(std::string prefix = "../tracking/36/",
   // create the main analysis class
   auto anaSim = o2::mftana::MFTAnaSim();
 
-  anaSim.mNThreads = 6;
+  anaSim.mNThreads = 4;
+
+  anaSim.setTopoDictFileName(dictFileName);
   
   // geometry manager
   o2::base::GeometryManager::loadGeometry(geomFileName.data());
@@ -69,6 +74,7 @@ void MFTAna(std::string prefix = "../tracking/36/",
   
   anaSim.setVerboseLevel(0);
 
+  // execution timing
   gettimeofday(&tvStart, NULL);
 
   // read the input trees and dimension internal vector containers
@@ -88,7 +94,8 @@ void MFTAna(std::string prefix = "../tracking/36/",
     
     anaSim.finishEvent();
   }
-  
+
+  // print particles summary
   if (false) {
     auto particles = anaSim.getParticles();
     printf("Particles %zu\n", particles.size());
@@ -103,8 +110,12 @@ void MFTAna(std::string prefix = "../tracking/36/",
  
   anaSim.finish();
 
+  // execution timing
   gettimeofday(&tvEnd, NULL);
-
   std::cout << "Time " << (tvEnd.tv_usec - tvStart.tv_usec) / 1000000.0 + (tvEnd.tv_sec - tvStart.tv_sec) << " [seconds]" << std::endl;
 
+  kineFile.Close();
+  hitsFile.Close();
+  clusFile.Close();
+  tracksFile.Close();
 }

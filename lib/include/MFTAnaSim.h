@@ -70,6 +70,7 @@ class MFTAnaSim
   const std::vector<MCPart>& getParticles() { return mParticles; }   ///< Return the vector of (MCPart) extracted particles from all events
   const std::vector<MFTAnaSimTrack>& getSimTracks() { return mAnaSimTracks; } ///< Return the vector of (MFTAnaSimTrack) extracted MC tracks from all events
   void linkTracks();   ///< Link SA tracks (indexes) to MC tracks (indexes) and viceversa
+  void setTopoDictFileName(std::string name) { mTopoDictFileName = name; }
   
  private:
   bool mPrimary = true, mSecondary = false, mAll = false;
@@ -97,6 +98,7 @@ class MFTAnaSim
   std::vector<MFTAnaSimSATrack> mAnaSimSATracks;   ///< Vector with standalone reconstructed tracks
 
   o2::itsmft::TopologyDictionary mTopoDict;   ///< Dictionary for the cluster topologies
+  std::string mTopoDictFileName;   ///< Dictionary file name
 
   TFile* mOutFile = nullptr;    ///< Output ROOT file
   
