@@ -75,11 +75,10 @@ bool MFTAnaSim::initialize()
   mMaxMCTracks = maxMCTracks;
 
   // pattern dictionary for the clusters
-  std::string dictfile = "MFTdictionary.bin";
-  std::ifstream file(dictfile.c_str());
+  std::ifstream file(mTopoDictFileName.c_str());
   if (file.good()) {
-    printf("Running with dictionary: %s \n", dictfile.c_str());
-    mTopoDict.readBinaryFile(dictfile);
+    printf("Running with dictionary: %s \n", mTopoDictFileName.c_str());
+    mTopoDict.readBinaryFile(mTopoDictFileName);
   } else {
     printf("Can not run without dictionary !\n");
     return false;
