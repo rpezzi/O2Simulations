@@ -1,49 +1,29 @@
-# O2Simulations
+## Shared library with functions for analysis and the steering macro
 
-Scripts and macros for MFT Simulations.
+### Combines previous macros for reading different objects from the simulations
 
-# Getting started with O2 Simulations
+## Installation
 
-## Table of Contents
+```bash
+$ cd ~/alice
+$ git clone https://github.com/MFT-MCHMatching/MFTana.git ## TODO: Move library to a clean repository on https://github.com/MFT-MCHMatching
+$ cd MFTana
+$ make
+$ make install
+```
 
-1.  [Setup tools](#orgf5c8ee3)
-2.  [Relevant skills](#org0544175)
-3.  [References](#org54c5d9c)
+## Usage
 
-<a id="orgf5c8ee3"></a>
+### Step 1: Process MFT simulation 
+The first step loads and process simulated and reconstructed MFT objects;  
+```bash
+root.exe -b -q ~/alice/MFTana/MFTAna.C+
+```
+Creates `MFTAnaSimTracks.root` with extended MFT standalone analysis objects
 
-# Setup tools
-
--   O2
-    -   <https://alice-doc.github.io/alice-analysis-tutorial/building/>
--   Emacs with Babel (to get organized - Optional?)
-    -   <http://www.cachestocaches.com/2018/6/org-literate-programming/>
-    -   <https://orgmode.org/worg/org-contrib/babel/>
-
-
-<a id="org0544175"></a>
-
-# Relevant skills
-
--   Root / macros / TTree
-    -   Root Primer: <https://root.cern.ch/root/htmldoc/guides/primer/ROOTPrimer.html>
-    -   Meet a TTree: <https://root.cern.ch/meet-ttree>
-    -   Running MFT Simulations: <https://alice-talk.web.cern.ch/t/instructions-to-run-mft-simulations-wiki-post/470>
-    -   Reconstruction workflow:
-        -   ![img](https://alice-offline.web.cern.ch/sites/alice-offline.web.cern.ch/files/images/Reconstruction-Framework.gif)
-        -   <https://alice-offline.web.cern.ch/Activities/Reconstruction/index.html>
--   version control with GIT
-    -   GIT Pro book
-        -   <https://git-scm.com/book/en/v2>
-    -   ALICE Git tutorial
-        -   <https://alisw.github.io/git-tutorial/>
-
-
-<a id="org54c5d9c"></a>
-
-# References
-
--   O2 Project DOxigen documentation: <https://aliceo2group.github.io/AliceO2/index.html>
--   ROOT Reference Documentation: <https://root.cern.ch/doc/master/>
--   C++ reference: <https://en.cppreference.com/w/>
--   ALICE Talk (O2 Discussion Forum): <https://alice-talk.web.cern.ch/>
+### Step 2: Analyse `MFTAnaSimTracks.root` and generate histograms
+Generates histograms from processed data from step 1.
+```bash
+root.exe -b -q ~/alice/MFTana/ReadMFTAnaSim.C+
+```
+Histograms stored on `ReadMFTAnaSim.root`
