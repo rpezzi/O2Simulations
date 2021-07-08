@@ -13,6 +13,8 @@ using MFTAnaSimHit = o2::mftana::MFTAnaSimHit;
 //_____________________________________________________________________________
 void ReadMFTAnaSim(std::string run = "")
 {
+  gSystem->Load("${ALIBUILD_WORK_DIR}/MFTAna/libMFTAnaSim");
+
   int verbose = 0;
 
   // file with histograms

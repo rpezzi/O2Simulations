@@ -6,6 +6,7 @@
 #include "MFTBase/GeometryTGeo.h"
 
 #include <sys/time.h>
+#include <TSystem.h>
 
 #endif
 
@@ -18,6 +19,8 @@ void MFTAna(std::string prefix = "",
 	    std::string geomFileName = "o2sim_geometry.root",
 	    std::string dictFileName = "MFTdictionary.bin")
 {
+  gSystem->Load("${ALIBUILD_WORK_DIR}/MFTAna/libMFTAnaSim");
+  
   hitsFileName = prefix + hitsFileName;
   kineFileName = prefix + kineFileName;
   clusFileName = prefix + clusFileName;

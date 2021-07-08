@@ -10,6 +10,8 @@
 #include <TH1F.h>
 #include <TFile.h>
 #include <TTree.h>
+#include <TSystem.h>
+
 
 enum TH1HistoCodes {
   MCNrOfHits,
