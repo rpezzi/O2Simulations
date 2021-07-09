@@ -87,7 +87,7 @@ void MFTAna(std::string prefix = "",
   }
 
   for (int event = 0; event < nrEvents ; event++) {
-    //printf("Analyze event %d.\n", event);
+    printf("Analyze event %d.\n", event);
     
     anaSim.initEvent(event, kAll);
     
