@@ -27,14 +27,20 @@ void MFTCTFRecoChecker(const Char_t* trkFile = "mfttracks.root", const Char_t* c
 
   auto c = new TCanvas();
   mftClsTree->Draw("MFTClustersROF.mROFEntry.mEntries>>MFTClusters","","");
+  c->SetLogy(true);
   c->Print("MFTClustersROF.png");
 
   c = new TCanvas();
-  mftClsTree->Draw("MFTClusterComp.mChipID>>ChipIDs","","");
+  mftClsTree->Draw("MFTClusterComp.mChipID>>ChipIDs(500,0,1000)","","");
+  c->SetLogy(true);
   c->Print("MFTClustersChipIDs.png");
 
   c = new TCanvas();
   mftTrackTree->Draw("MFTTracksROF.mROFEntry.mEntries>>MFTTracks","","");
   c->Print("MFTTracksROFs.png");
+
+  c = new TCanvas();
+  mftTrackTree->Draw("MFTTrack.getNumberOfPoints()>>MFTTracksNClusters(10,0,10)","","");
+  c->Print("MFTTracksNClusters.png");
 
 }
