@@ -26,7 +26,7 @@ class Binner : public TrackerConfig
       for (Int_t layer2 = (layer1 + 1); layer2 < 10; ++layer2) {
         std::cout << "layer1 = " << layer1 << " ; layer2 = " << layer2 << std::endl;
         int binindex = 0;
-        for (auto& bins : mBinsS[0][1]) {
+        for (auto& bins : mBinsS[layer1][layer2]) {
           std::cout << "bin #" << binindex++ << ": ";
           for (auto& i : bins) {
             std::cout << i << " ";
@@ -42,10 +42,10 @@ class Binner : public TrackerConfig
     Float_t dz, x, y, r, phi, x_proj, y_proj, r_proj, phi_proj;
     Int_t binIndex1, binIndex2, binIndex2S, binR_proj, binPhi_proj;
 
-    for (Int_t layer1 = 0; layer1 < (constants::mft::LayersNumber - 1); ++layer1) {
-      for (Int_t layer2 = (layer1 + 1); layer2 < constants::mft::LayersNumber; ++layer2) {
-        mBinsS[layer1][layer2 - 1].resize(mRBins * mPhiBins);
-        mBins[layer1][layer2 - 1].resize(mRBins * mPhiBins);
+    for (Int_t layer1 = 0; layer1 < (constants::mft::LayersNumber - 1); layer1++) {
+      for (Int_t layer2 = 0; layer2 < (constants::mft::LayersNumber -1); layer2++) {
+        mBinsS[layer1][layer2].resize(mRBins * mPhiBins);
+        mBins[layer1][layer2].resize(mRBins * mPhiBins);
       }
     }
 
@@ -144,7 +144,7 @@ class Binner : public TrackerConfig
       for (Int_t layer2 = (layer1 + 1); layer2 < 10; ++layer2) {
         std::cout << "layer1 = " << layer1 << " ; layer2 = " << layer2 << std::endl;
         int binindex = 0;
-        for (auto& bins : mBinsS[0][1]) {
+        for (auto& bins : mBinsS[layer1][layer2]) {
           std::cout << "bin #" << binindex++ << ": ";
           for (auto& i : bins) {
             std::cout << i << " ";
